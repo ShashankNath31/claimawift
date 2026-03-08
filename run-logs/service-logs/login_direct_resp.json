@@ -1,0 +1,10 @@
+{
+  "code" : "SUCCESS",
+  "message" : "OTP sent to your registered email",
+  "data" : {
+    "challengeId" : "14ad40e6-338f-48de-98f6-b24053938c06",
+    "maskedEmail" : "u***2@gmail.com",
+    "expiresInSeconds" : 300
+  },
+  "requestId" : "fb996e72-d84a-408f-b645-18698df821a8"
+}

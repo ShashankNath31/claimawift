@@ -1,0 +1,105 @@
+{
+    "name":  "ClaimSwift Local Smoke",
+    "values":  [
+                   {
+                       "key":  "gateway_base",
+                       "value":  "http://localhost:8080",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "auth_base",
+                       "value":  "http://localhost:8081",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "claim_base",
+                       "value":  "http://localhost:8082",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "document_base",
+                       "value":  "http://localhost:8083",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "assessment_base",
+                       "value":  "http://localhost:8084",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "payment_base",
+                       "value":  "http://localhost:8085",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "notification_base",
+                       "value":  "http://localhost:8086",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "reporting_base",
+                       "value":  "http://localhost:8087",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "policy_token",
+                       "value":  "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMTUiLCJ1c2VySWQiOjExNSwidXNlcm5hbWUiOiJwb2xpY3kuMjAyNjAzMDUtMTE1NTMwIiwicm9sZXMiOlsiUk9MRV9QT0xJQ1lIT0xERVIiXSwicm9sZSI6IlJPTEVfUE9MSUNZSE9MREVSIiwiaWF0IjoxNzcyNjkxOTMxLCJleHAiOjE3NzI3NzgzMzF9.UnVibVysWO1VsW3CKqw6JTvIrof4hshwzetKbf_qxaJZ6FFQtxEfO4fS1F7lIB6dG49SMWCJuViF2TK3-dw0VQ",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "adjuster_token",
+                       "value":  "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMTYiLCJ1c2VySWQiOjExNiwidXNlcm5hbWUiOiJhZGp1c3Rlci4yMDI2MDMwNS0xMTU1MzAiLCJyb2xlcyI6WyJST0xFX0FESlVTVEVSIl0sInJvbGUiOiJST0xFX0FESlVTVEVSIiwiaWF0IjoxNzcyNjkxOTMxLCJleHAiOjE3NzI3NzgzMzF9.98xahQixwl8aJW2Njk9c1KmZ0Ms6moVD0lbM8LWbOGFJtvkasky0Na-L9trqn9rZNYyU7Ioap4k6zZQQHGPvIQ",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "manager_token",
+                       "value":  "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMTciLCJ1c2VySWQiOjExNywidXNlcm5hbWUiOiJtYW5hZ2VyLjIwMjYwMzA1LTExNTUzMCIsInJvbGVzIjpbIlJPTEVfTUFOQUdFUiJdLCJyb2xlIjoiUk9MRV9NQU5BR0VSIiwiaWF0IjoxNzcyNjkxOTMyLCJleHAiOjE3NzI3NzgzMzJ9.qZnyQJp4zRGYtOnrsu074wfZDPRrpkoD8TK-0jxAAv9BJE0FkfrZ0R6RP_pOvfIa1xPTmi0TzAX3GmhYzxUDqA",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "claim_id",
+                       "value":  "56",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "claim_number",
+                       "value":  "CLM-9D7A0B62",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "assessment_id",
+                       "value":  "30",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "payment_id",
+                       "value":  "24",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "document_id",
+                       "value":  "30",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "notification_id",
+                       "value":  "161",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "policy_user_id",
+                       "value":  "115",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "adjuster_user_id",
+                       "value":  "116",
+                       "enabled":  true
+                   },
+                   {
+                       "key":  "manager_user_id",
+                       "value":  "117",
+                       "enabled":  true
+                   }
+               ]
+}

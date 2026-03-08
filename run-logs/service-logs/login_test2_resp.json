@@ -1,0 +1,5 @@
+{
+  "code" : "SERVICE_UNAVAILABLE",
+  "message" : "Authentication service is temporarily unavailable.",
+  "requestId" : "32efddd0-4aab-441b-b438-d599c8d1312b"
+}

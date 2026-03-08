@@ -1,0 +1,100 @@
+<section class="payments-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Settlements Desk</p>
+    <h1>Initiate and review claim disbursements</h1>
+    <p>Create settlement instructions and track payout outcomes using verified claim references.</p>
+  </app-shell-card>
+
+  <div class="layout">
+    <app-shell-card class="fade-up" *ngIf="canCreateSettlement">
+      <h2>Create Settlement Instruction</h2>
+      <form [formGroup]="paymentForm" (ngSubmit)="submitPayment()">
+        <label>
+          Claim Reference
+          <input type="text" formControlName="claimReference" placeholder="Claim ID (42) or Claim # (CLM-B29899A5)" />
+          <small class="field-error" *ngIf="fieldError('payment', 'claimReference', 'Claim reference') as message">{{ message }}</small>
+        </label>
+        <p class="feedback hint" *ngIf="isBankDetailsLoading">Fetching policyholder bank details...</p>
+        <p class="feedback hint" *ngIf="!isBankDetailsLoading && bankDetailsHint">{{ bankDetailsHint }}</p>
+        <label>Policyholder ID (use 0 for auto-fill) <input type="number" min="0" formControlName="policyholderId" /></label>
+        <label>Settlement Amount (use 0 for auto-fill) <input type="number" min="0" formControlName="amount" /></label>
+        <label>
+          Payment Method
+          <select formControlName="paymentMethod">
+            <option *ngFor="let method of paymentMethods" [value]="method">{{ formatPaymentMethod(method) }}</option>
+          </select>
+        </label>
+        <label>
+          Beneficiary Name
+          <input type="text" formControlName="beneficiaryName" />
+          <small class="field-error" *ngIf="fieldError('payment', 'beneficiaryName', 'Beneficiary name') as message">{{ message }}</small>
+        </label>
+        <label>
+          Account Number
+          <input type="text" formControlName="accountNumber" />
+          <small class="field-error" *ngIf="fieldError('payment', 'accountNumber', 'Account number') as message">{{ message }}</small>
+        </label>
+        <label>
+          IFSC Code
+          <input type="text" formControlName="ifscCode" />
+          <small class="field-error" *ngIf="fieldError('payment', 'ifscCode', 'IFSC code') as message">{{ message }}</small>
+        </label>
+        <label>Bank Name <input type="text" formControlName="bankName" /></label>
+        <button type="submit" [disabled]="isSubmitting">{{ isSubmitting ? 'Processing...' : 'Submit Settlement' }}</button>
+      </form>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up" *ngIf="!canCreateSettlement">
+      <h2>Settlement Creation Restricted</h2>
+      <p>Only insurance managers can access and process settlement instructions.</p>
+      <p>Use your manager account to work with settlement history and payment outcomes.</p>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <div class="table-header">
+        <h2>Settlement History</h2>
+        <form [formGroup]="filterForm" (ngSubmit)="loadPayments()" class="inline-form">
+          <input type="text" formControlName="claimReference" placeholder="Claim ID (42) or Claim # (CLM-B29899A5)" />
+          <button type="submit">Fetch</button>
+        </form>
+      </div>
+      <small class="field-error" *ngIf="fieldError('filter', 'claimReference', 'Claim reference') as message">{{ message }}</small>
+
+      <p class="feedback success" *ngIf="success">{{ success }}</p>
+      <p class="feedback error" *ngIf="error">{{ error }}</p>
+      <p class="feedback hint" *ngIf="resolvedClaimId">
+        Linked to Claim {{ resolvedClaimNumber }} (ID {{ resolvedClaimId }}) |
+        Status: {{ formatStatus(resolvedClaimStatus) }} |
+        Approved Amount: {{ resolvedApprovedAmount | number: '1.0-2' }}
+      </p>
+      <p *ngIf="isLoading">Loading payments...</p>
+
+      <div class="table-wrap" *ngIf="!isLoading">
+        <table *ngIf="payments.length; else empty">
+          <thead>
+            <tr>
+              <th>Transaction</th>
+              <th>Status</th>
+              <th>Method</th>
+              <th>Amount</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let payment of payments">
+              <td>{{ payment.transactionId }}</td>
+              <td>{{ formatStatus(payment.status) }}</td>
+              <td>{{ formatPaymentMethod(payment.paymentMethod) }}</td>
+              <td>{{ payment.amount | number: '1.0-2' }}</td>
+              <td>{{ payment.createdAt | date: 'short' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #empty>
+        <p>No settlement transactions are available for this claim reference.</p>
+      </ng-template>
+    </app-shell-card>
+  </div>
+</section>

@@ -1,0 +1,58 @@
+[
+  {
+    "id": 9001,
+    "policyNumber": "POL-MTR-2026-1190",
+    "policyType": "Motor",
+    "planName": "Comprehensive Plus",
+    "insurerName": "SafeRoad Insurance",
+    "vehicleRegistration": "MH12AB3456",
+    "coverageAmount": 750000,
+    "claimedAmount": 120000,
+    "availableCoverage": 630000,
+    "startDate": "2026-01-10",
+    "expiryDate": "2027-01-09",
+    "status": "ACTIVE"
+  },
+  {
+    "id": 9002,
+    "policyNumber": "POL-HLT-2026-4472",
+    "policyType": "Health",
+    "planName": "Family Secure",
+    "insurerName": "WellSure Health",
+    "vehicleRegistration": "-",
+    "coverageAmount": 500000,
+    "claimedAmount": 60000,
+    "availableCoverage": 440000,
+    "startDate": "2026-02-01",
+    "expiryDate": "2027-01-31",
+    "status": "ACTIVE"
+  },
+  {
+    "id": 9003,
+    "policyNumber": "POL-HOM-2025-7018",
+    "policyType": "Home",
+    "planName": "Home Shield",
+    "insurerName": "TrustGuard General",
+    "vehicleRegistration": "-",
+    "coverageAmount": 1200000,
+    "claimedAmount": 0,
+    "availableCoverage": 1200000,
+    "startDate": "2025-01-15",
+    "expiryDate": "2025-12-31",
+    "status": "EXPIRED"
+  },
+  {
+    "id": 9004,
+    "policyNumber": "POL-TRV-2026-0087",
+    "policyType": "Travel",
+    "planName": "Travel Protect",
+    "insurerName": "SkyWay Cover",
+    "vehicleRegistration": "-",
+    "coverageAmount": 300000,
+    "claimedAmount": 15000,
+    "availableCoverage": 285000,
+    "startDate": "2026-03-01",
+    "expiryDate": "2027-02-28",
+    "status": "ACTIVE"
+  }
+]

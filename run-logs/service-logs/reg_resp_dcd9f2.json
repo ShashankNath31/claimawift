@@ -1,0 +1,21 @@
+{
+  "code" : "SUCCESS",
+  "message" : "User registered successfully",
+  "data" : {
+    "accessToken" : "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIxMiIsInVzZXJJZCI6MTIsInVzZXJuYW1lIjoidV9kY2Q5ZjIiLCJyb2xlcyI6WyJST0xFX1BPTElDWUhPTERFUiJdLCJyb2xlIjoiUk9MRV9QT0xJQ1lIT0xERVIiLCJpYXQiOjE3NzI5MTAyOTQsImV4cCI6MTc3Mjk5NjY5NH0.ZVXrAYqTuuJcRX0zwtAlxmiYM9ityiR3797_s0it7yLy9OI_vnPMtT_NI8hdeAXedcVvTQYWo7CqN5Dh_5Buug",
+    "tokenType" : "Bearer",
+    "expiresIn" : 86400000,
+    "user" : {
+      "id" : 12,
+      "username" : "u_dcd9f2",
+      "email" : "u_dcd9f2@gmail.com",
+      "firstName" : "Test",
+      "lastName" : "User",
+      "phoneNumber" : "9999999999",
+      "roles" : [ "ROLE_POLICYHOLDER" ],
+      "status" : "ACTIVE",
+      "createdAt" : "2026-03-08T00:34:54.760049"
+    }
+  },
+  "requestId" : "21262442-d59b-49f8-a40c-cd0838d6a91f"
+}

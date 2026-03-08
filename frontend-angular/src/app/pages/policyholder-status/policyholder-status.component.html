@@ -1,0 +1,107 @@
+<section class="status-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Claim Status Tracking</p>
+    <h1>Status timeline</h1>
+    <p>Your claim statuses refresh automatically every 15 seconds.</p>
+  </app-shell-card>
+
+  <app-shell-card>
+    <div class="table-header">
+      <div>
+        <h2>My Claim Status</h2>
+        <p class="muted" *ngIf="lastUpdated">Last updated: {{ lastUpdated | date: 'mediumTime' }}</p>
+      </div>
+      <button type="button" (click)="onRefreshStatuses()" [disabled]="isLoading">Refresh Now</button>
+    </div>
+
+    <p class="feedback error" *ngIf="error">{{ error }}</p>
+    <p *ngIf="isLoading">Refreshing status...</p>
+
+    <div class="timeline-list" *ngIf="!isLoading && claims.length; else empty">
+      <article class="timeline-card" *ngFor="let claim of claims">
+        <div class="card-head">
+          <div>
+            <h3>{{ claim.claimNumber }}</h3>
+            <p>Submitted: {{ claim.createdAt | date: 'short' }}</p>
+          </div>
+          <span class="status-chip" [attr.data-status]="claim.status">{{ formatStatus(claim.status) }}</span>
+        </div>
+
+        <div class="timeline">
+          <div class="step" [attr.data-state]="stepClass(claim.status, 'submitted')">
+            <span class="dot"></span>
+            <span class="label">Submitted</span>
+          </div>
+          <div class="line" [attr.data-state]="stepClass(claim.status, 'review')"></div>
+          <div class="step" [attr.data-state]="stepClass(claim.status, 'review')">
+            <span class="dot"></span>
+            <span class="label">Under Review</span>
+          </div>
+          <div class="line" [attr.data-state]="stepClass(claim.status, 'decision')"></div>
+          <div class="step" [attr.data-state]="stepClass(claim.status, 'decision')">
+            <span class="dot"></span>
+            <span class="label">{{ decisionLabel(claim.status) }}</span>
+          </div>
+          <div class="line" [attr.data-state]="stepClass(claim.status, 'paid')"></div>
+          <div class="step" [attr.data-state]="stepClass(claim.status, 'paid')">
+            <span class="dot"></span>
+            <span class="label">Paid</span>
+          </div>
+        </div>
+
+        <div class="amounts">
+          <span>Claim Amount: {{ claim.claimAmount | number: '1.0-2' }}</span>
+          <span>Approved Amount: {{ (claim.approvedAmount || 0) | number: '1.0-2' }}</span>
+        </div>
+
+        <section class="bank-details" *ngIf="shouldShowBankDetails(claim)">
+          <h4>Settlement Bank Details</h4>
+          <p class="muted">Your claim is approved. Add bank details so settlement can be processed quickly.</p>
+          <p class="feedback success" *ngIf="bankDetailsSuccessByClaim[claim.id]">{{ bankDetailsSuccessByClaim[claim.id] }}</p>
+          <p class="feedback error" *ngIf="bankDetailsErrorByClaim[claim.id]">{{ bankDetailsErrorByClaim[claim.id] }}</p>
+          <div class="bank-grid">
+            <label>
+              Beneficiary Name
+              <input
+                type="text"
+                [(ngModel)]="bankDetailsByClaim[claim.id].beneficiaryName"
+                [ngModelOptions]="{ standalone: true }"
+              />
+            </label>
+            <label>
+              Account Number
+              <input
+                type="text"
+                [(ngModel)]="bankDetailsByClaim[claim.id].accountNumber"
+                [ngModelOptions]="{ standalone: true }"
+              />
+            </label>
+            <label>
+              IFSC Code
+              <input
+                type="text"
+                [(ngModel)]="bankDetailsByClaim[claim.id].ifscCode"
+                [ngModelOptions]="{ standalone: true }"
+              />
+            </label>
+            <label>
+              Bank Name
+              <input
+                type="text"
+                [(ngModel)]="bankDetailsByClaim[claim.id].bankName"
+                [ngModelOptions]="{ standalone: true }"
+              />
+            </label>
+          </div>
+          <button type="button" (click)="saveBankDetails(claim)" [disabled]="bankDetailsSavingByClaim[claim.id]">
+            {{ bankDetailsSavingByClaim[claim.id] ? 'Saving...' : 'Save Bank Details' }}
+          </button>
+        </section>
+      </article>
+    </div>
+
+    <ng-template #empty>
+      <p>No claims available to track yet.</p>
+    </ng-template>
+  </app-shell-card>
+</section>

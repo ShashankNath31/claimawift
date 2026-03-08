@@ -1,0 +1,124 @@
+<section class="assessment-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <div class="heading">
+      <div>
+        <p class="eyebrow">Claim Assessment</p>
+        <h1 *ngIf="claim; else loadingTitle">{{ claim.claimNumber }}</h1>
+        <ng-template #loadingTitle><h1>Loading assessment...</h1></ng-template>
+      </div>
+      <a routerLink="/claims" class="back-link">Back To Claims</a>
+    </div>
+    <p *ngIf="claim">Assess evidence, review claim details, and record your decision.</p>
+  </app-shell-card>
+
+  <p class="feedback success" *ngIf="success">{{ success }}</p>
+  <p class="feedback error" *ngIf="error">{{ error }}</p>
+
+  <div class="layout" *ngIf="claim as currentClaim">
+    <app-shell-card class="fade-up">
+      <h2>Claim Details</h2>
+      <div class="detail-grid">
+        <p><strong>Policyholder:</strong> {{ currentClaim.policyholderName || ('#' + currentClaim.policyholderId) }}</p>
+        <p><strong>Policy:</strong> {{ currentClaim.policyNumber }}</p>
+        <p><strong>Status:</strong> {{ formatStatus(currentClaim.status) }}</p>
+        <p><strong>Claim Amount:</strong> {{ currentClaim.claimAmount | number: '1.0-2' }}</p>
+        <p><strong>Approved Amount:</strong> {{ (currentClaim.approvedAmount || 0) | number: '1.0-2' }}</p>
+        <p><strong>Incident Date:</strong> {{ currentClaim.incidentDate | date: 'mediumDate' }}</p>
+      </div>
+      <p class="description" *ngIf="currentClaim.incidentLocation"><strong>Location:</strong> {{ currentClaim.incidentLocation }}</p>
+      <p class="description" *ngIf="currentClaim.incidentDescription"><strong>Description:</strong> {{ currentClaim.incidentDescription }}</p>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <h2>Assessment Actions</h2>
+      <p class="description" *ngIf="assessment">
+        Assessment #{{ assessment.id }} | Decision: {{ formatStatus(assessment.decision || 'PENDING_REVIEW') }}
+      </p>
+      <form [formGroup]="actionForm" (ngSubmit)="submitDecision()">
+        <label>
+          Assessment Decision
+          <select formControlName="decision" [disabled]="!canTakeAction || isActionBusy">
+            <option *ngFor="let decision of getDecisionOptions()" [value]="decision">{{ formatStatus(decision) }}</option>
+          </select>
+        </label>
+        <label *ngIf="shouldShowApprovedAmount()">
+          Final Amount
+          <input type="number" min="0" formControlName="approvedAmount" />
+        </label>
+        <label *ngIf="shouldShowAdjustmentType()">
+          Adjustment Type
+          <select formControlName="adjustmentType">
+            <option *ngFor="let adjustmentType of adjustmentTypes" [value]="adjustmentType">
+              {{ formatStatus(adjustmentType) }}
+            </option>
+          </select>
+        </label>
+        <label>
+          Notes
+          <textarea rows="3" formControlName="notes" placeholder="Assessment notes"></textarea>
+        </label>
+        <div class="action-row">
+          <button type="submit" [disabled]="!canTakeAction || isActionBusy">
+            {{ isActionBusy ? 'Saving...' : 'Submit Decision' }}
+          </button>
+          <button
+            type="button"
+            class="secondary"
+            *ngIf="canRequestManagerReview()"
+            (click)="requestManagerReview()"
+            [disabled]="isActionBusy"
+          >
+            Request Manager Review
+          </button>
+        </div>
+      </form>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <h2>Assessment Adjustments</h2>
+      <ul class="item-list" *ngIf="adjustments.length">
+        <li *ngFor="let adjustment of adjustments">
+          <strong>{{ formatStatus(adjustment.adjustmentType) }}</strong>
+          <span>Adjusted: {{ adjustment.adjustedAmount | number: '1.0-2' }}</span>
+          <span *ngIf="adjustment.previousAmount != null">Previous: {{ adjustment.previousAmount | number: '1.0-2' }}</span>
+          <span>{{ adjustment.createdAt | date: 'short' }}</span>
+          <span *ngIf="adjustment.reason">{{ adjustment.reason }}</span>
+        </li>
+      </ul>
+      <p *ngIf="!adjustments.length">No assessment adjustments recorded.</p>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <h2>Evidence Documents</h2>
+      <p *ngIf="isEvidenceLoading">Loading evidence...</p>
+      <ul class="item-list" *ngIf="!isEvidenceLoading && evidenceDocuments.length">
+        <li *ngFor="let doc of evidenceDocuments">
+          <span>{{ doc.originalFileName }}</span>
+          <span>{{ formatDocumentType(doc.documentType) }}</span>
+          <span>{{ doc.createdAt | date: 'short' }}</span>
+          <button type="button" class="secondary" (click)="downloadDocument(doc)">Download</button>
+        </li>
+      </ul>
+      <p *ngIf="!isEvidenceLoading && !evidenceDocuments.length">No evidence documents found.</p>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <h2>Audit Trail</h2>
+      <p *ngIf="isAuditLoading">Loading audit trail...</p>
+      <ul class="item-list" *ngIf="!isAuditLoading && auditTrail.length">
+        <li *ngFor="let entry of auditTrail">
+          <strong>{{ formatAuditAction(entry.actionType) }}</strong>
+          <span>{{ entry.createdAt | date: 'short' }}</span>
+          <span>By {{ entry.changedBy }}</span>
+          <span *ngIf="entry.oldStatus || entry.newStatus">
+            {{ entry.oldStatus ? formatStatus(entry.oldStatus) : 'N/A' }} -> {{ entry.newStatus ? formatStatus(entry.newStatus) : 'N/A' }}
+          </span>
+          <span *ngIf="entry.details">{{ entry.details }}</span>
+        </li>
+      </ul>
+      <p *ngIf="!isAuditLoading && !auditTrail.length">No audit entries found.</p>
+    </app-shell-card>
+  </div>
+
+  <p *ngIf="isLoading">Loading claim...</p>
+</section>

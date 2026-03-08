@@ -1,0 +1,79 @@
+<section class="documents-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Document Vault</p>
+    <h1>{{ canUploadDocuments() ? 'Attach and retrieve claim evidence' : 'Review and retrieve claim evidence' }}</h1>
+    <p *ngIf="canUploadDocuments()">Maintain policy proofs, incident reports, and supporting files against verified claim references.</p>
+    <p *ngIf="!canUploadDocuments()">View and download policy proofs, incident reports, and supporting files for verified claim references.</p>
+  </app-shell-card>
+
+  <div class="layout">
+    <app-shell-card class="fade-up" *ngIf="canUploadDocuments()">
+      <h2>Upload Claim Document</h2>
+      <form [formGroup]="uploadForm" (ngSubmit)="upload()">
+        <label>
+          Claim Reference
+          <input type="text" formControlName="claimReference" placeholder="Claim ID (42) or Claim # (CLM-B29899A5)" />
+          <small class="field-error" *ngIf="fieldError('upload', 'claimReference', 'Claim reference') as message">{{ message }}</small>
+        </label>
+        <label>
+          Document Type
+          <select formControlName="documentType">
+            <option *ngFor="let type of documentTypes" [value]="type">{{ formatDocumentType(type) }}</option>
+          </select>
+        </label>
+        <label>
+          Notes (optional)
+          <textarea rows="2" formControlName="description"></textarea>
+        </label>
+        <label>
+          File
+          <input type="file" accept=".pdf,application/pdf" (change)="onFileSelected($event)" />
+        </label>
+        <button type="submit" [disabled]="isSubmitting">{{ isSubmitting ? 'Uploading...' : 'Upload Document' }}</button>
+      </form>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <div class="table-header">
+        <h2>Documents by Claim</h2>
+        <form [formGroup]="filterForm" (ngSubmit)="load()" class="inline-form">
+          <input type="text" formControlName="claimReference" placeholder="Claim ID (42) or Claim # (CLM-B29899A5)" />
+          <button type="submit">Fetch</button>
+        </form>
+      </div>
+      <small class="field-error" *ngIf="fieldError('filter', 'claimReference', 'Claim reference') as message">{{ message }}</small>
+
+      <p class="feedback success" *ngIf="success">{{ success }}</p>
+      <p class="feedback error" *ngIf="error">{{ error }}</p>
+      <p class="feedback hint" *ngIf="resolvedClaimId">Linked to Claim {{ resolvedClaimNumber }} (ID {{ resolvedClaimId }})</p>
+      <p *ngIf="isLoading">Loading documents...</p>
+
+      <div class="table-wrap" *ngIf="!isLoading">
+        <table *ngIf="documents.length; else empty">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Type</th>
+              <th>Size (KB)</th>
+              <th>Uploaded</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let doc of documents">
+              <td>{{ doc.originalFileName || doc.fileName }}</td>
+              <td>{{ formatDocumentType(doc.documentType) }}</td>
+              <td>{{ (doc.fileSize / 1024) | number: '1.0-2' }}</td>
+              <td>{{ doc.createdAt | date: 'short' }}</td>
+              <td><button type="button" (click)="download(doc)">Download File</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ng-template #empty>
+        <p>No documents are available for this claim reference.</p>
+      </ng-template>
+    </app-shell-card>
+  </div>
+</section>

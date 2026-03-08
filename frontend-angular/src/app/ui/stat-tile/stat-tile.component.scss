@@ -1,0 +1,36 @@
+.stat-tile {
+  border-radius: 0.9rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  gap: 0.2rem;
+}
+
+.stat-label {
+  color: var(--ink-500);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+}
+
+.stat-value {
+  font-size: 1.3rem;
+  color: var(--ink-900);
+}
+
+.stat-tile[data-tone='teal'] {
+  border-color: rgba(12, 122, 118, 0.3);
+}
+
+.stat-tile[data-tone='teal'] .stat-value {
+  color: var(--teal-700);
+}
+
+.stat-tile[data-tone='orange'] {
+  border-color: rgba(227, 97, 59, 0.28);
+}
+
+.stat-tile[data-tone='orange'] .stat-value {
+  color: var(--orange-500);
+}

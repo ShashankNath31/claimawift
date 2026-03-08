@@ -1,0 +1,1 @@
+@echo off`r`ncd /d A:\claimswift-master`r`njava -jar config-server\target\config-server-1.0.0.jar 1>>A:\claimswift-master\run-logs\service-logs\config-server.out.log 2>>A:\claimswift-master\run-logs\service-logs\config-server.err.log`r`n

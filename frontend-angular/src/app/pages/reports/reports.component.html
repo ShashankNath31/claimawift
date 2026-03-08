@@ -1,0 +1,93 @@
+<section class="reports-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Claims Analytics</p>
+    <h1>Operational and financial insights</h1>
+    <p *ngIf="!isAdjusterOnly">Review portfolio movement, settlement performance, and adjuster productivity across selected dates.</p>
+    <p *ngIf="isAdjusterOnly">Review claims performance for your role and selected date range.</p>
+  </app-shell-card>
+
+  <app-shell-card class="fade-up">
+    <form [formGroup]="filterForm" (ngSubmit)="loadReports()" class="filter-bar">
+      <label>
+        Start Date
+        <input type="date" formControlName="startDate" />
+      </label>
+      <label>
+        End Date
+        <input type="date" formControlName="endDate" />
+      </label>
+      <button type="submit" [disabled]="isLoading">{{ isLoading ? 'Loading...' : 'Generate Report' }}</button>
+    </form>
+    <div class="export-actions" *ngIf="canExportPdf">
+      <button type="button" (click)="exportClaimSummaryPdf()" [disabled]="isExportingClaimPdf">
+        {{ isExportingClaimPdf ? 'Exporting Claim PDF...' : 'Export Claim PDF' }}
+      </button>
+      <button type="button" (click)="exportPaymentPdf()" [disabled]="isExportingPaymentPdf">
+        {{ isExportingPaymentPdf ? 'Exporting Payment PDF...' : 'Export Payment PDF' }}
+      </button>
+      <button
+        type="button"
+        *ngIf="canViewAdjusterPerformance"
+        (click)="exportAdjusterPdf()"
+        [disabled]="isExportingAdjusterPdf"
+      >
+        {{ isExportingAdjusterPdf ? 'Exporting Adjuster PDF...' : 'Export Adjuster PDF' }}
+      </button>
+    </div>
+    <p class="feedback error" *ngIf="error">{{ error }}</p>
+  </app-shell-card>
+
+  <div class="report-grid" *ngIf="claimSummary">
+    <app-shell-card>
+      <h2>Claims Portfolio</h2>
+      <div class="stats">
+        <app-stat-tile label="Total Claims" [value]="claimSummary.totalClaims.toString()" tone="teal" />
+        <app-stat-tile label="Approved" [value]="claimSummary.approvedClaims.toString()" tone="orange" />
+        <app-stat-tile label="Total Amount" [value]="(claimSummary.totalClaimAmount | number: '1.0-2') || '0'" />
+      </div>
+    </app-shell-card>
+
+    <app-shell-card *ngIf="canViewPaymentAnalytics && paymentReport">
+      <h2>Settlement Performance</h2>
+      <div class="stats">
+        <app-stat-tile label="Total Payments" [value]="paymentReport.totalPayments.toString()" tone="teal" />
+        <app-stat-tile label="Approved" [value]="paymentReport.approvedPayments.toString()" tone="orange" />
+        <app-stat-tile label="Total Amount" [value]="(paymentReport.totalAmount | number: '1.0-2') || '0'" />
+      </div>
+    </app-shell-card>
+  </div>
+
+  <app-shell-card *ngIf="isAdjusterOnly">
+    <h2>Adjuster Access Scope</h2>
+    <p>Settlement and organization-wide adjuster productivity analytics are restricted to manager/admin.</p>
+  </app-shell-card>
+
+  <app-shell-card *ngIf="adjusterPerformance">
+    <h2>Adjuster Productivity</h2>
+    <div class="table-wrap">
+      <table *ngIf="adjusterPerformance.adjusterPerformances.length; else noAdjusters">
+        <thead>
+          <tr>
+            <th>Adjuster</th>
+            <th>Assigned</th>
+            <th>Approved</th>
+            <th>Rejected</th>
+            <th>Approval Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let adjuster of adjusterPerformance.adjusterPerformances">
+            <td>{{ adjuster.adjusterName }}</td>
+            <td>{{ adjuster.totalClaimsAssigned }}</td>
+            <td>{{ adjuster.claimsApproved }}</td>
+            <td>{{ adjuster.claimsRejected }}</td>
+            <td>{{ adjuster.approvalRate | number: '1.0-2' }}%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noAdjusters>
+      <p>No adjuster activity was recorded in the selected period.</p>
+    </ng-template>
+  </app-shell-card>
+</section>

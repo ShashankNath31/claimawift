@@ -1,0 +1,30 @@
+﻿server:
+  port: 8087
+
+spring:
+  application:
+    name: reporting-service
+  datasource:
+    url: ${REPORTING_DB_URL:jdbc:mysql://localhost:3306/report_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${REPORTING_DB_USERNAME:root}
+    password: ${REPORTING_DB_PASSWORD:Axelblaze10}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+reporting:
+  export:
+    formats: pdf,excel,csv
+    max-rows: 100000
+
+logging:
+  level:
+    com.claimswift.reportingservice: DEBUG

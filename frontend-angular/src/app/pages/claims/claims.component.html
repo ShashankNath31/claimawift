@@ -1,0 +1,273 @@
+<section class="claims-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">{{ isAdjusterOnly ? 'Adjuster Workbench' : 'Claims Governance' }}</p>
+        <h1>
+          {{ isAdjusterOnly ? 'Review assigned claims and submit decisions' : 'Review, assign, and progress claim workflow' }}
+        </h1>
+        <p *ngIf="isAdjusterOnly">
+          Process your assigned queue with evidence review, decision notes, and manager escalation when required.
+        </p>
+        <p *ngIf="!isAdjusterOnly">
+          Use queue controls to route claims to adjusters and move decisions through approval and settlement stages.
+        </p>
+      </div>
+      <div class="role-pills" *ngIf="currentUser$ | async as user">
+        <app-role-chip *ngFor="let role of user.roles" [role]="role" />
+      </div>
+    </div>
+  </app-shell-card>
+
+  <app-shell-card class="fade-up adjuster-summary" *ngIf="isAdjusterOnly">
+    <h2>My Productivity</h2>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <span class="summary-label">Assigned Claims</span>
+        <strong>{{ adjusterAssignedCount() }}</strong>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Pending Decisions</span>
+        <strong>{{ adjusterPendingCount() }}</strong>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Decisions Today</span>
+        <strong>{{ adjusterDecidedTodayCount() }}</strong>
+      </div>
+    </div>
+  </app-shell-card>
+
+  <div class="claims-layout">
+    <app-shell-card class="fade-up">
+      <h2>{{ isAdjusterOnly ? 'My Queue Filters' : 'Queue Controls' }}</h2>
+      <section class="availability-panel" *ngIf="canAssignClaims">
+        <h3>Adjuster Availability</h3>
+        <p *ngIf="!adjusters.length">No adjusters found.</p>
+        <ul class="adjuster-availability-list" *ngIf="adjusters.length">
+          <li *ngFor="let adjuster of adjusters">
+            <span class="adjuster-name">{{ adjuster.username }} (#{{ adjuster.id }})</span>
+            <span class="adjuster-meta">{{ (adjuster.status || 'UNKNOWN').toUpperCase() }}</span>
+            <span class="adjuster-meta">{{ getAdjusterAvailability(adjuster) }}</span>
+          </li>
+        </ul>
+      </section>
+      <section class="availability-panel assignment-panel" *ngIf="canAssignClaims">
+        <h3>Assignment Desk</h3>
+        <label class="small-label">
+          Claim
+          <select [value]="assignmentClaimId || ''" (change)="onAssignmentClaimChange($event)">
+            <option value="">Select claim</option>
+            <option *ngFor="let claim of claims" [value]="claim.id">
+              {{ claim.claimNumber }} - {{ claim.policyNumber }}
+            </option>
+          </select>
+        </label>
+        <div *ngIf="assignmentClaim as claim" class="assignment-details">
+          <p class="assignment-meta">
+            Policy: <strong>{{ claim.policyNumber }}</strong> | Status: <strong>{{ formatStatus(claim.status) }}</strong>
+          </p>
+          <label class="small-label">
+            Adjuster
+            <select [value]="selectedAssigneeByClaim[claim.id] || ''" (change)="onAssigneeChange(claim.id, $event)">
+              <option value="">Select adjuster</option>
+              <option *ngFor="let adjuster of adjusters" [value]="adjuster.id">
+                {{ adjuster.username }} (#{{ adjuster.id }}) - {{ getAdjusterAvailability(adjuster) }}
+              </option>
+            </select>
+          </label>
+          <div class="inline-actions">
+            <button
+              type="button"
+              (click)="assignClaim(claim)"
+              [disabled]="isRowBusy(claim.id) || !isClaimAssignable(claim)"
+            >
+              Assign
+            </button>
+            <button
+              type="button"
+              class="secondary"
+              (click)="unassignClaim(claim)"
+              [disabled]="isRowBusy(claim.id) || !claim.assignedAdjusterId"
+            >
+              Unassign
+            </button>
+          </div>
+          <p class="assignment-meta warning" *ngIf="!isClaimAssignable(claim)">
+            Claim must be in Submitted status for new assignment.
+          </p>
+        </div>
+      </section>
+      <form [formGroup]="filterForm" (ngSubmit)="applyFilters()">
+        <label>
+          Search
+          <input type="text" formControlName="query" placeholder="Claim ref, policy, name, phone..." />
+        </label>
+        <label>
+          Status
+          <select formControlName="status">
+            <option *ngFor="let status of statusFilters" [value]="status">
+              {{ status === 'ALL' ? 'All' : formatStatus(status) }}
+            </option>
+          </select>
+        </label>
+        <div class="action-row">
+          <button type="submit" [disabled]="isLoading">Apply Filters</button>
+          <button type="button" class="secondary" (click)="clearFilters()" [disabled]="isLoading">Reset</button>
+        </div>
+      </form>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <div class="table-header">
+        <h2>{{ isAdjusterOnly ? 'My Assigned Claims' : 'Claims Queue' }}</h2>
+        <button type="button" (click)="loadClaims()" [disabled]="isLoading">Refresh</button>
+      </div>
+
+      <p class="feedback success" *ngIf="success">{{ success }}</p>
+      <p class="feedback error" *ngIf="error">{{ error }}</p>
+      <p *ngIf="isLoading">Loading claims...</p>
+
+      <div class="table-wrap" *ngIf="!isLoading">
+        <table *ngIf="claims.length; else emptyState">
+          <thead>
+            <tr>
+              <th>Claim Ref</th>
+              <th>Policyholder</th>
+              <th>Policy</th>
+              <th>Status</th>
+              <th>Amount</th>
+              <th *ngIf="!isAdjusterOnly">Adjuster</th>
+              <th>Submitted Age</th>
+              <th>Last Update Age</th>
+              <th>SLA</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let claim of claims">
+              <tr>
+                <td>{{ claim.claimNumber }}</td>
+                <td>{{ claim.policyholderName || ('Policyholder #' + claim.policyholderId) }}</td>
+                <td>{{ claim.policyNumber }}</td>
+                <td>{{ formatStatus(claim.status) }}</td>
+                <td>{{ claim.claimAmount | number: '1.0-2' }}</td>
+                <td *ngIf="!isAdjusterOnly">{{ getAdjusterDisplay(claim) }}</td>
+                <td>{{ formatHoursAsAge(submittedAgeHours(claim)) }}</td>
+                <td>{{ formatHoursAsAge(lastUpdateAgeHours(claim)) }}</td>
+                <td>
+                  <span class="sla-pill" [ngClass]="slaClass(claim)">
+                    {{ slaLabel(claim) }}
+                  </span>
+                </td>
+                <td>
+                  <div class="inline-actions" *ngIf="isAdjusterOnly">
+                    <button type="button" (click)="openAssessment(claim)">Assessment</button>
+                  </div>
+                  <div class="row-actions" *ngIf="!isAdjusterOnly">
+                    <div class="row-block" *ngIf="canUpdateClaimStatus">
+                      <label class="small-label">
+                        Next Status
+                        <select
+                          [value]="selectedStatusByClaim[claim.id] || claim.status"
+                          (change)="onStatusChange(claim.id, $event)"
+                          [disabled]="!hasAnyTransition(claim)"
+                        >
+                          <option *ngFor="let status of getNextStatuses(claim.status)" [value]="status">{{ formatStatus(status) }}</option>
+                        </select>
+                      </label>
+                      <label class="small-label" *ngIf="shouldShowApprovedAmount(claim.id, claim)">
+                        Approved Amount
+                        <input
+                          type="number"
+                          min="0"
+                          [value]="approvedAmountByClaim[claim.id]"
+                          (input)="onApprovedAmountChange(claim.id, $event)"
+                        />
+                      </label>
+                      <label class="small-label">
+                        Notes
+                        <input
+                          type="text"
+                          placeholder="Decision notes"
+                          [value]="notesByClaim[claim.id] || ''"
+                          (input)="onNotesChange(claim.id, $event)"
+                        />
+                      </label>
+                      <div class="inline-actions">
+                        <button
+                          type="button"
+                          (click)="updateClaimStatus(claim)"
+                          [disabled]="isRowBusy(claim.id) || !hasAnyTransition(claim)"
+                        >
+                          {{ isRowBusy(claim.id) ? 'Saving...' : hasAnyTransition(claim) ? 'Update Status' : 'No Transition' }}
+                        </button>
+                        <button
+                          type="button"
+                          class="secondary"
+                          *ngIf="canRequestManagerReview(claim)"
+                          (click)="requestManagerReview(claim)"
+                          [disabled]="isRowBusy(claim.id)"
+                        >
+                          Request Manager Review
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="inline-actions">
+                      <button type="button" class="secondary" (click)="toggleEvidence(claim.id)">
+                        {{ expandedEvidenceClaimId === claim.id ? 'Hide Evidence' : 'View Evidence' }}
+                      </button>
+                      <button type="button" class="secondary" (click)="toggleAuditTrail(claim.id)">
+                        {{ expandedAuditClaimId === claim.id ? 'Hide Audit' : 'View Audit' }}
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngIf="!isAdjusterOnly && expandedEvidenceClaimId === claim.id" class="evidence-row">
+                <td [attr.colspan]="isAdjusterOnly ? 9 : 10">
+                  <p *ngIf="isEvidenceLoading(claim.id)">Loading evidence...</p>
+                  <div *ngIf="!isEvidenceLoading(claim.id)">
+                    <p *ngIf="!(documentsByClaim[claim.id]?.length)">No evidence documents found for this claim.</p>
+                    <ul class="evidence-list" *ngIf="documentsByClaim[claim.id]?.length">
+                      <li *ngFor="let doc of documentsByClaim[claim.id]">
+                        <span>{{ doc.originalFileName }}</span>
+                        <span>{{ formatDocumentType(doc.documentType) }}</span>
+                        <span>{{ doc.createdAt | date: 'short' }}</span>
+                        <button type="button" class="secondary" (click)="downloadDocument(doc)">Download</button>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngIf="!isAdjusterOnly && expandedAuditClaimId === claim.id" class="audit-row">
+                <td [attr.colspan]="isAdjusterOnly ? 9 : 10">
+                  <p *ngIf="isAuditLoading(claim.id)">Loading audit trail...</p>
+                  <div *ngIf="!isAuditLoading(claim.id)">
+                    <p *ngIf="!(auditTrailByClaim[claim.id]?.length)">No audit entries found for this claim.</p>
+                    <ul class="audit-list" *ngIf="auditTrailByClaim[claim.id]?.length">
+                      <li *ngFor="let event of auditTrailByClaim[claim.id]">
+                        <strong>{{ formatAuditAction(event.actionType) }}</strong>
+                        <span>{{ event.createdAt | date: 'short' }}</span>
+                        <span>By {{ event.changedBy }}</span>
+                        <span *ngIf="event.oldStatus || event.newStatus">
+                          {{ event.oldStatus ? formatStatus(event.oldStatus) : 'N/A' }} -> {{ event.newStatus ? formatStatus(event.newStatus) : 'N/A' }}
+                        </span>
+                        <span *ngIf="event.details">{{ event.details }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #emptyState>
+        <p>No claims found for the selected filters.</p>
+      </ng-template>
+    </app-shell-card>
+  </div>
+</section>

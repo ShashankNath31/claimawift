@@ -1,0 +1,4 @@
+com\claimswift\eurekaserver\EurekaServerApplication.class
+com\claimswift\eurekaserver\config\SecurityConfig.class
+com\claimswift\eurekaserver\filter\CorrelationIdFilter.class
+com\claimswift\eurekaserver\filter\CorrelationIdFilter$1.class

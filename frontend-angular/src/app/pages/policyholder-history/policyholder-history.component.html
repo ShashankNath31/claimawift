@@ -1,0 +1,114 @@
+<section class="history-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Claim History</p>
+    <h1>History and settlement records</h1>
+    <p>View your past claims and download related settlement documents.</p>
+  </app-shell-card>
+
+  <app-shell-card>
+    <div class="table-header">
+      <h2>My Claim History</h2>
+      <button type="button" (click)="onRefreshHistory()" [disabled]="isLoading">Refresh</button>
+    </div>
+
+    <p class="feedback error" *ngIf="error">{{ error }}</p>
+    <p *ngIf="isLoading">Loading history...</p>
+
+    <div class="table-wrap" *ngIf="!isLoading">
+      <table *ngIf="history.length; else emptyHistory">
+        <thead>
+          <tr>
+            <th>Claim Ref</th>
+            <th>Status</th>
+            <th>Claim Amount</th>
+            <th>Submitted</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let claim of pagedHistory">
+            <td>{{ claim.claimNumber }}</td>
+            <td>{{ formatStatus(claim.status) }}</td>
+            <td>{{ claim.claimAmount | number: '1.0-2' }}</td>
+            <td>{{ claim.createdAt | date: 'short' }}</td>
+            <td>
+              <button type="button" (click)="viewClaimRecords(claim)">View</button>
+              <button type="button" *ngIf="isPaidClaim(claim)" (click)="downloadSettlementDocument(claim)">
+                Download Settlement
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination" *ngIf="history.length > pageSize">
+        <button type="button" (click)="goToPreviousPage()" [disabled]="currentPage === 1">Previous</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" (click)="goToNextPage()" [disabled]="currentPage === totalPages">Next</button>
+      </div>
+    </div>
+    <ng-template #emptyHistory>
+      <p>No historical claims available.</p>
+    </ng-template>
+  </app-shell-card>
+
+  <div class="records-grid" *ngIf="selectedClaim">
+    <app-shell-card>
+      <h2>Documents for {{ selectedClaim.claimNumber }}</h2>
+      <p *ngIf="isLoadingRecords">Loading documents...</p>
+      <div class="table-wrap" *ngIf="!isLoadingRecords">
+        <table *ngIf="documents.length; else noDocs">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Type</th>
+              <th>Uploaded</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let doc of documents">
+              <td>{{ doc.originalFileName || doc.fileName }}</td>
+              <td>{{ doc.documentType }}</td>
+              <td>{{ doc.createdAt | date: 'short' }}</td>
+              <td><button type="button" (click)="downloadDocument(doc)">Download</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noDocs>
+        <p>No documents found for this claim.</p>
+      </ng-template>
+    </app-shell-card>
+
+    <app-shell-card>
+      <h2>Settlement Records</h2>
+      <p *ngIf="isLoadingRecords">Loading settlements...</p>
+      <div class="table-wrap" *ngIf="!isLoadingRecords">
+        <table *ngIf="payments.length; else noPayments">
+          <thead>
+            <tr>
+              <th>Transaction</th>
+              <th>Status</th>
+              <th>Method</th>
+              <th>Amount</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let payment of payments">
+              <td>{{ payment.transactionId }}</td>
+              <td>{{ formatStatus(payment.status) }}</td>
+              <td>{{ formatPaymentMethod(payment.paymentMethod) }}</td>
+              <td>{{ payment.amount | number: '1.0-2' }}</td>
+              <td>{{ payment.createdAt | date: 'short' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <ng-template #noPayments>
+        <p>No settlement records found for this claim.</p>
+      </ng-template>
+    </app-shell-card>
+  </div>
+</section>

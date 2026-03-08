@@ -1,0 +1,1 @@
+@echo off`r`ncd /d A:\claimswift-master`r`nA:\claimswift-master\apache-maven-3.9.13\bin\mvn.cmd -pl api-gateway spring-boot:run > A:\claimswift-master\run-logs\service-logs\api-gateway-new.out.log 2>&1`r`n

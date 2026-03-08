@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FallbackController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.gateway.controller</a> &gt; <span class="el_source">FallbackController.java</span></div><h1>FallbackController.java</h1><pre class="source lang-java linenums">package com.claimswift.gateway.controller;
+
+import com.claimswift.gateway.util.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Fallback Controller for Circuit Breaker
+ */
+<span class="fc" id="L14">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/fallback&quot;)
+<span class="fc" id="L17">public class FallbackController {</span>
+
+    @RequestMapping(&quot;/auth&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; authFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L22">        log.warn(&quot;Auth service fallback triggered&quot;);</span>
+<span class="nc" id="L23">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L24">                .body(ApiResponse.error(</span>
+                        &quot;Authentication service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+
+    @RequestMapping(&quot;/claims&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; claimsFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L34">        log.warn(&quot;Claim service fallback triggered&quot;);</span>
+<span class="nc" id="L35">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L36">                .body(ApiResponse.error(</span>
+                        &quot;Claim service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+
+    @RequestMapping(&quot;/documents&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; documentsFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L46">        log.warn(&quot;Document service fallback triggered&quot;);</span>
+<span class="nc" id="L47">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L48">                .body(ApiResponse.error(</span>
+                        &quot;Document service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+
+    @RequestMapping(&quot;/assessments&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; assessmentsFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L58">        log.warn(&quot;Assessment service fallback triggered&quot;);</span>
+<span class="nc" id="L59">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L60">                .body(ApiResponse.error(</span>
+                        &quot;Assessment service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+
+    @RequestMapping(&quot;/payments&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; paymentsFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L70">        log.warn(&quot;Payment service fallback triggered&quot;);</span>
+<span class="nc" id="L71">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L72">                .body(ApiResponse.error(</span>
+                        &quot;Payment service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+
+    @RequestMapping(&quot;/notifications&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; notificationsFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L82">        log.warn(&quot;Notification service fallback triggered&quot;);</span>
+<span class="nc" id="L83">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L84">                .body(ApiResponse.error(</span>
+                        &quot;Notification service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+
+    @RequestMapping(&quot;/reports&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; reportsFallback(
+            @RequestHeader(value = &quot;X-Correlation-ID&quot;, required = false) String requestId) {
+<span class="nc" id="L94">        log.warn(&quot;Reporting service fallback triggered&quot;);</span>
+<span class="nc" id="L95">        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)</span>
+<span class="nc" id="L96">                .body(ApiResponse.error(</span>
+                        &quot;Reporting service is temporarily unavailable.&quot;,
+                        &quot;SERVICE_UNAVAILABLE&quot;,
+                        requestId
+                ));
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

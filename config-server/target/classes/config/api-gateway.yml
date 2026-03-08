@@ -1,0 +1,117 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  codec:
+    max-in-memory-size: 10MB
+  webflux:
+    multipart:
+      max-in-memory-size: 2MB
+      max-disk-usage-per-part: 10MB
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Expose-Headers
+        - RemoveResponseHeader=WWW-Authenticate
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/api/auth/**
+
+        - id: claim-service
+          uri: lb://claim-service
+          predicates:
+            - Path=/api/claims/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: claimServiceCircuitBreaker
+                fallbackUri: forward:/fallback/claims
+
+        - id: document-service
+          uri: lb://document-service
+          predicates:
+            - Path=/api/documents/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: RequestSize
+              args:
+                maxSize: 10MB
+            - name: CircuitBreaker
+              args:
+                name: documentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/documents
+
+        - id: assessment-service
+          uri: lb://assessment-service
+          predicates:
+            - Path=/api/assessments/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: assessmentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/assessments
+
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: paymentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/payments
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: notificationServiceCircuitBreaker
+                fallbackUri: forward:/fallback/notifications
+
+        - id: notification-websocket
+          uri: lb:ws://notification-service
+          predicates:
+            - Path=/ws/notifications/**
+
+        - id: reporting-service
+          uri: lb://reporting-service
+          predicates:
+            - Path=/api/reports/**
+          filters:
+            - name: JwtAuthenticationFilter
+            - name: CircuitBreaker
+              args:
+                name: reportingServiceCircuitBreaker
+                fallbackUri: forward:/fallback/reports
+
+      discovery:
+        locator:
+          enabled: false
+          lower-case-service-id: true
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 20s
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+
+logging:
+  level:
+    com.claimswift.gateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG

@@ -1,0 +1,16 @@
+﻿spring:
+  application:
+    name: assessment-service
+  config:
+    import: "optional:configserver:http://${CONFIG_SERVER_USERNAME:configuser}:${CONFIG_SERVER_PASSWORD:configpass}@localhost:8888"
+  cloud:
+    config:
+      uri: http://localhost:8888
+      username: ${CONFIG_SERVER_USERNAME:configuser}
+      password: ${CONFIG_SERVER_PASSWORD:configpass}
+      fail-fast: true
+      retry:
+        initial-interval: 1000
+        max-attempts: 6
+        max-interval: 2000
+        multiplier: 1.1

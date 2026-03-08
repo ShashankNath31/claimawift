@@ -1,0 +1,72 @@
+[
+    {
+        "name":  "config-server",
+        "pid":  22552,
+        "port":  8888,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\config-server.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\config-server.err.log"
+    },
+    {
+        "name":  "eureka-server",
+        "pid":  11760,
+        "port":  8761,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\eureka-server.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\eureka-server.err.log"
+    },
+    {
+        "name":  "api-gateway",
+        "pid":  27780,
+        "port":  8080,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\api-gateway.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\api-gateway.err.log"
+    },
+    {
+        "name":  "auth-service",
+        "pid":  25132,
+        "port":  8081,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\auth-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\auth-service.err.log"
+    },
+    {
+        "name":  "claim-service",
+        "pid":  22208,
+        "port":  8082,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\claim-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\claim-service.err.log"
+    },
+    {
+        "name":  "document-service",
+        "pid":  23220,
+        "port":  8083,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\document-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\document-service.err.log"
+    },
+    {
+        "name":  "assessment-service",
+        "pid":  12352,
+        "port":  8084,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\assessment-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\assessment-service.err.log"
+    },
+    {
+        "name":  "payment-service",
+        "pid":  15880,
+        "port":  8085,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\payment-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\payment-service.err.log"
+    },
+    {
+        "name":  "notification-service",
+        "pid":  28380,
+        "port":  8086,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\notification-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\notification-service.err.log"
+    },
+    {
+        "name":  "reporting-service",
+        "pid":  24304,
+        "port":  8087,
+        "outLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\reporting-service.out.log",
+        "errLog":  "c:\\Users\\shashank.nath\\Desktop\\Claimswift\\run-logs\\service-logs\\reporting-service.err.log"
+    }
+]

@@ -1,0 +1,1549 @@
+﻿{
+    "info":  {
+                 "_postman_id":  "1b28f0ad-a76c-43cc-8b9c-c9c21520599c",
+                 "name":  "ClaimSwift Local APIs (Smoke Covered)",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+                 "description":  "Generated from api-smoke-report-20260304-132420.json. Contains 86 requests that passed smoke tests."
+             },
+    "item":  [
+                 {
+                     "name":  "Config Server",
+                     "item":  [
+                                  {
+                                      "name":  "Health config-server [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{config_base}}/actuator/health"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Eureka Server",
+                     "item":  [
+                                  {
+                                      "name":  "Health eureka-server [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{eureka_base}}/actuator/health"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "API Gateway",
+                     "item":  [
+                                  {
+                                      "name":  "Health api-gateway [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{gateway_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Gateway auth route [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{gateway_base}}/api/auth/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Gateway claim route [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{gateway_base}}/api/claims/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Gateway report route [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{gateway_base}}/api/reports/claims/summary"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Auth Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health auth-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{auth_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth register policyholder [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/register",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"username\":\"policy.postman\",\"email\":\"policy.postman@example.com\",\"password\":\"Password@123\",\"firstName\":\"Smoke\",\"lastName\":\"Policyholder\",\"phoneNumber\":\"9999999999\",\"role\":\"ROLE_POLICYHOLDER\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth register adjuster [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/register",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"username\":\"adjuster.postman\",\"email\":\"adjuster.postman@example.com\",\"password\":\"Password@123\",\"firstName\":\"Smoke\",\"lastName\":\"Adjuster\",\"phoneNumber\":\"9999999998\",\"role\":\"ROLE_ADJUSTER\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth register manager [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/register",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"username\":\"manager.postman\",\"email\":\"manager.postman@example.com\",\"password\":\"Password@123\",\"firstName\":\"Smoke\",\"lastName\":\"Manager\",\"phoneNumber\":\"9999999997\",\"role\":\"ROLE_MANAGER\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth login manager [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/login",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"usernameOrEmail\":\"manager.postman\",\"password\":\"Password@123\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth refresh [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/refresh",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth me [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/me"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth health [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Auth logout [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{auth_base}}/api/auth/logout",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Claim Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health claim-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{claim_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim submit primary [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"policyNumber\":\"POL-POSTMAN\",\"vehicleRegistration\":\"DL01PM1234\",\"vehicleMake\":\"Honda\",\"vehicleModel\":\"City\",\"vehicleYear\":2021,\"incidentDate\":\"2026-03-01\",\"incidentLocation\":\"Bangalore\",\"incidentDescription\":\"Postman test claim\",\"claimAmount\":12500.00}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim submit delete-target [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"policyNumber\":\"POL-POSTMAN-DEL\",\"vehicleRegistration\":\"DL01PM5678\",\"vehicleMake\":\"Maruti\",\"vehicleModel\":\"Baleno\",\"vehicleYear\":2020,\"incidentDate\":\"2026-03-01\",\"incidentLocation\":\"Bangalore\",\"incidentDescription\":\"Postman delete target\",\"claimAmount\":10000.00}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim get by id [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim get by number [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/number/{{claim_number}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim my-claims [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/my-claims"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim history [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/history"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim list page [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims?page=0\u0026size=10\u0026sortBy=createdAt\u0026sortDir=desc"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim update [PUT]",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"policyNumber\":\"POL-POSTMAN-UPD\",\"vehicleRegistration\":\"DL01UPD1234\",\"vehicleMake\":\"Toyota\",\"vehicleModel\":\"Camry\",\"vehicleYear\":2022,\"incidentDate\":\"2026-03-01\",\"incidentLocation\":\"Bangalore\",\"incidentDescription\":\"Updated after review\",\"claimAmount\":13000.00}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim assign [PATCH]",
+                                      "request":  {
+                                                      "method":  "PATCH",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}/assign",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"adjusterId\":{{adjuster_user_id}}}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim assigned list [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/assigned"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim pending list [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/pending"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim put status ADJUSTED [PUT]",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}/status",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"status\":\"ADJUSTED\",\"notes\":\"Adjusted after assessment\",\"assignedAdjusterId\":{{adjuster_user_id}}}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim patch status APPROVED [PATCH]",
+                                      "request":  {
+                                                      "method":  "PATCH",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}/status",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"status\":\"APPROVED\",\"notes\":\"Approved after adjustment\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim by status [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/status/APPROVED"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim statistics [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/statistics"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim search [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/search?query=POL-20260304-132420"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim by adjuster [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/adjuster/{{adjuster_user_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim summary [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/summary?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim internal all [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/internal/all"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim internal by status [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/internal/status/APPROVED"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim internal by adjuster [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/internal/adjuster/{{adjuster_user_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim internal summary [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/internal/summary?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim health [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim delete [DELETE]",
+                                      "request":  {
+                                                      "method":  "DELETE",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Claim read after payment [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{claim_base}}/api/claims/{{claim_id}}"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Document Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health document-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{document_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document upload [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/upload",
+                                                      "body":  {
+                                                                   "mode":  "formdata",
+                                                                   "formdata":  [
+                                                                                    {
+                                                                                        "key":  "file",
+                                                                                        "type":  "file",
+                                                                                        "src":  "{{upload_file}}"
+                                                                                    },
+                                                                                    {
+                                                                                        "key":  "claimId",
+                                                                                        "value":  "{{claim_id}}",
+                                                                                        "type":  "text"
+                                                                                    },
+                                                                                    {
+                                                                                        "key":  "documentType",
+                                                                                        "value":  "PHOTO_EVIDENCE",
+                                                                                        "type":  "text"
+                                                                                    },
+                                                                                    {
+                                                                                        "key":  "description",
+                                                                                        "value":  "Postman upload",
+                                                                                        "type":  "text"
+                                                                                    }
+                                                                                ]
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document get by id [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/{{document_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document by claim [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/claim/{{claim_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document by user [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/user/{{policy_user_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document by claim+type [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/claim/{{claim_id}}/type/PHOTO_EVIDENCE"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document download [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/{{document_id}}/download"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Document delete [DELETE]",
+                                      "request":  {
+                                                      "method":  "DELETE",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{document_base}}/api/documents/{{document_id}}"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Assessment Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health assessment-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment create [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"claimId\":{{claim_id}},\"assessedAmount\":12000.00,\"justification\":\"Primary inspection complete\",\"notes\":\"No red flags\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment decision [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/decision",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"assessmentId\":{{assessment_id}},\"decision\":\"ADJUSTED\",\"finalAmount\":11800.50,\"justification\":\"Depreciation applied\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment adjustment [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/adjustment",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"assessmentId\":{{assessment_id}},\"claimId\":{{claim_id}},\"adjustedAmount\":11800.50,\"adjustmentType\":\"OTHER\",\"reason\":\"Manual adjustment for wear and tear\",\"detailedNotes\":\"Detailed notes for audit\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment get by id [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/{{assessment_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment adjustments by assessment [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/{{assessment_id}}/adjustments"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment get by claim [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/claim/{{claim_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment my-assessments [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/my-assessments"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment request [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/request?claimId={{claim_id}}",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment notify-complete [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{adjuster_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/notify-complete",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"claimId\":{{claim_id}},\"claimNumber\":\"{{claim_number}}\",\"approvedAmount\":11800.50}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Assessment health [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{assessment_base}}/api/assessments/health"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Payment Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health payment-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{payment_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment process [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"claimId\":{{claim_id}},\"policyholderId\":{{policy_user_id}},\"amount\":11800.50,\"paymentMethod\":\"NEFT\",\"beneficiaryName\":\"Smoke Policyholder\",\"accountNumber\":\"123456789012\",\"ifscCode\":\"HDFC0001234\",\"bankName\":\"HDFC Bank\",\"forceSimulateSuccess\":true,\"forceSimulateFailure\":false}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment get by id [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments/{{payment_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment by claim [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments/claim/{{claim_id}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment internal all [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments/internal/all"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment internal by status [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments/internal/status/APPROVED"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment internal summary [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments/internal/summary"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Payment internal by claim [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{payment_base}}/api/payments/internal/claim/{{claim_id}}"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Notification Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health notification-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{notification_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification test [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/test",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification my list [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification unread list [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/unread"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification unread count [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/unread/count"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification mark read [PUT]",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/{{notification_id}}/read",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification mark all read [PUT]",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/read-all",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification send [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/send",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"userId\":{{policy_user_id}},\"claimId\":{{claim_id}},\"title\":\"Smoke Notification\",\"message\":\"Notification endpoint smoke test\",\"type\":\"SYSTEM_MESSAGE\",\"actionUrl\":\"/claims/{{claim_id}}\",\"senderId\":{{manager_user_id}}}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Notification delete [DELETE]",
+                                      "request":  {
+                                                      "method":  "DELETE",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{notification_base}}/api/notifications/{{sent_notification_id}}"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "Reporting Service",
+                     "item":  [
+                                  {
+                                      "name":  "Health reporting-service [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/actuator/health"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report claim summary [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/claims/summary?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report claim summary pdf [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/claims/summary/pdf?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report payments [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/payments?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report payments pdf [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/payments/pdf?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report adjuster performance [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/adjusters/performance?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report adjuster performance pdf [GET]",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/adjusters/performance/pdf?startDate=2026-01-01\u0026endDate=2026-12-31"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report claim-event [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{policy_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/claim-event",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"claimId\":{{claim_id}},\"claimNumber\":\"{{claim_number}}\",\"eventType\":\"POSTMAN_TEST\",\"timestamp\":\"2026-03-04T13:00:00\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Report status-change [POST]",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Authorization",
+                                                                         "value":  "Bearer {{manager_token}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{reporting_base}}/api/reports/status-change",
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\"claimId\":{{claim_id}},\"claimNumber\":\"{{claim_number}}\",\"oldStatus\":\"UNDER_REVIEW\",\"newStatus\":\"APPROVED\",\"timestamp\":\"2026-03-04T13:00:00\"}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               }
+                                                  }
+                                  }
+                              ]
+                 }
+             ],
+    "variable":  [
+                     {
+                         "key":  "config_base",
+                         "value":  "http://localhost:8888"
+                     },
+                     {
+                         "key":  "eureka_base",
+                         "value":  "http://localhost:8761"
+                     },
+                     {
+                         "key":  "gateway_base",
+                         "value":  "http://localhost:8080"
+                     },
+                     {
+                         "key":  "auth_base",
+                         "value":  "http://localhost:8081"
+                     },
+                     {
+                         "key":  "claim_base",
+                         "value":  "http://localhost:8082"
+                     },
+                     {
+                         "key":  "document_base",
+                         "value":  "http://localhost:8083"
+                     },
+                     {
+                         "key":  "assessment_base",
+                         "value":  "http://localhost:8084"
+                     },
+                     {
+                         "key":  "payment_base",
+                         "value":  "http://localhost:8085"
+                     },
+                     {
+                         "key":  "notification_base",
+                         "value":  "http://localhost:8086"
+                     },
+                     {
+                         "key":  "reporting_base",
+                         "value":  "http://localhost:8087"
+                     },
+                     {
+                         "key":  "policy_token",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "adjuster_token",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "manager_token",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "claim_id",
+                         "value":  "7"
+                     },
+                     {
+                         "key":  "claim_number",
+                         "value":  "CLM-B92EC2BF"
+                     },
+                     {
+                         "key":  "assessment_id",
+                         "value":  "4"
+                     },
+                     {
+                         "key":  "payment_id",
+                         "value":  "4"
+                     },
+                     {
+                         "key":  "document_id",
+                         "value":  "2"
+                     },
+                     {
+                         "key":  "notification_id",
+                         "value":  "7"
+                     },
+                     {
+                         "key":  "sent_notification_id",
+                         "value":  "8"
+                     },
+                     {
+                         "key":  "policy_user_id",
+                         "value":  "1"
+                     },
+                     {
+                         "key":  "adjuster_user_id",
+                         "value":  "2"
+                     },
+                     {
+                         "key":  "manager_user_id",
+                         "value":  "3"
+                     },
+                     {
+                         "key":  "upload_file",
+                         "value":  "c:/Users/shashank.nath/Desktop/Claimswift/run-logs/smoke-upload-latest.pdf"
+                     }
+                 ]
+}

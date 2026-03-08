@@ -1,0 +1,31 @@
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.26rem 0.64rem;
+  border: 1px solid var(--border-color);
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--ink-800);
+}
+
+.role-chip[data-role='ROLE_POLICYHOLDER'] {
+  border-color: rgba(12, 122, 118, 0.36);
+  color: var(--teal-700);
+}
+
+.role-chip[data-role='ROLE_ADJUSTER'] {
+  border-color: rgba(227, 97, 59, 0.36);
+  color: var(--orange-500);
+}
+
+.role-chip[data-role='ROLE_MANAGER'] {
+  border-color: rgba(89, 84, 200, 0.35);
+  color: #4f49bb;
+}
+
+.role-chip[data-role='ROLE_ADMIN'] {
+  border-color: rgba(164, 22, 22, 0.42);
+  color: #8d1a1a;
+}

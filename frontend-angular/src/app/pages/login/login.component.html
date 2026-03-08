@@ -1,0 +1,54 @@
+<section class="auth-layout fade-up">
+  <div class="auth-card surface-card">
+    <h1>Login</h1>
+    <p class="subtext" *ngIf="!awaitingOtp">Sign in to continue to your dashboard.</p>
+    <p class="subtext" *ngIf="awaitingOtp">
+      OTP sent to {{ maskedEmail }}. Enter the 6-digit code to complete sign-in.
+    </p>
+    <p class="subtext otp-expiry" *ngIf="awaitingOtp">Code expires in {{ otpExpiresInSeconds }} seconds.</p>
+
+    <form [formGroup]="credentialsForm" (ngSubmit)="submit()" *ngIf="!awaitingOtp">
+      <label>
+        Username or email
+        <input type="text" formControlName="usernameOrEmail" placeholder="john123 or john@example.com" />
+        <small class="field-error" *ngIf="credentialsFieldError('usernameOrEmail', 'Username or email') as message">{{ message }}</small>
+      </label>
+
+      <label>
+        Password
+        <input type="password" formControlName="password" placeholder="Enter your password" />
+        <small class="field-error" *ngIf="credentialsFieldError('password', 'Password') as message">{{ message }}</small>
+      </label>
+
+      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+      <button type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Sending OTP...' : 'Login' }}
+      </button>
+    </form>
+
+    <form [formGroup]="otpForm" (ngSubmit)="submit()" *ngIf="awaitingOtp">
+      <label>
+        OTP code
+        <input type="text" formControlName="otp" maxlength="6" placeholder="6-digit OTP" />
+        <small class="field-error" *ngIf="otpFieldError('otp', 'OTP') as message">{{ message }}</small>
+      </label>
+
+      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+      <button type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Verifying...' : 'Login' }}
+      </button>
+
+      <div class="otp-actions">
+        <button type="button" class="secondary" (click)="resendOtp()" [disabled]="isSubmitting">Resend OTP</button>
+        <button type="button" class="secondary" (click)="backToCredentials()" [disabled]="isSubmitting">Back</button>
+      </div>
+    </form>
+
+    <p class="redirect">
+      Don't have an account?
+      <a routerLink="/register">Register here</a>
+    </p>
+  </div>
+</section>

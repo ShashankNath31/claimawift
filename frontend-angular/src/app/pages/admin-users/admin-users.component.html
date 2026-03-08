@@ -1,0 +1,82 @@
+<section class="admin-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Access Administration</p>
+    <h1>Internal user access and role control</h1>
+    <p>Privileged roles are assigned only by authorized administrators through controlled workflows.</p>
+  </app-shell-card>
+
+  <div class="layout">
+    <app-shell-card>
+      <h2>Create Internal Account</h2>
+      <form [formGroup]="createForm" (ngSubmit)="createUser()">
+        <label>Username <input type="text" formControlName="username" /><small class="field-error" *ngIf="fieldError('create', 'username', 'Username') as message">{{ message }}</small></label>
+        <label>Email <input type="email" formControlName="email" /><small class="field-error" *ngIf="fieldError('create', 'email', 'Email') as message">{{ message }}</small></label>
+        <label>Password <input type="password" formControlName="password" /><small class="field-error" *ngIf="fieldError('create', 'password', 'Password') as message">{{ message }}</small></label>
+        <label>First Name <input type="text" formControlName="firstName" /><small class="field-error" *ngIf="fieldError('create', 'firstName', 'First name') as message">{{ message }}</small></label>
+        <label>Last Name <input type="text" formControlName="lastName" /><small class="field-error" *ngIf="fieldError('create', 'lastName', 'Last name') as message">{{ message }}</small></label>
+        <label>Mobile Number <input type="text" formControlName="phoneNumber" /></label>
+        <label>
+          Access Role
+          <select formControlName="role">
+            <option *ngFor="let role of internalRoles" [value]="role">{{ formatRole(role) }}</option>
+          </select>
+        </label>
+        <button type="submit" [disabled]="isBusy">Create Account</button>
+      </form>
+    </app-shell-card>
+
+    <app-shell-card>
+      <h2>Update Access Profile</h2>
+      <form [formGroup]="updateForm" (ngSubmit)="applyUpdates()">
+        <label>User ID <input type="number" min="1" formControlName="userId" /><small class="field-error" *ngIf="fieldError('update', 'userId', 'User ID') as message">{{ message }}</small></label>
+        <label>
+          Assigned Role
+          <select formControlName="role">
+            <option *ngFor="let role of internalRoles" [value]="role">{{ formatRole(role) }}</option>
+          </select>
+        </label>
+        <label>
+          Account Status
+          <select formControlName="status">
+            <option *ngFor="let status of statuses" [value]="status">{{ formatStatus(status) }}</option>
+          </select>
+        </label>
+        <button type="submit" [disabled]="isBusy">Save Changes</button>
+      </form>
+      <p class="feedback success" *ngIf="success">{{ success }}</p>
+      <p class="feedback error" *ngIf="error">{{ error }}</p>
+    </app-shell-card>
+  </div>
+
+  <app-shell-card>
+    <div class="table-header">
+      <h2>User Directory</h2>
+      <button type="button" (click)="loadUsers()">Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table *ngIf="users.length; else empty">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Roles</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ formatRoles(user.roles) }}</td>
+            <td>{{ formatStatus(user.status) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #empty>
+      <p>No user accounts found.</p>
+    </ng-template>
+  </app-shell-card>
+</section>

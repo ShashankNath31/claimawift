@@ -1,0 +1,4 @@
+com\claimswift\configserver\filter\CorrelationIdFilter$1.class
+com\claimswift\configserver\config\SecurityConfig.class
+com\claimswift\configserver\ConfigServerApplication.class
+com\claimswift\configserver\filter\CorrelationIdFilter.class

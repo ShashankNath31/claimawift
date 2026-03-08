@@ -1,0 +1,51 @@
+﻿# Document Service Configuration
+server:
+  port: 8083
+
+spring:
+  application:
+    name: document-service
+  datasource:
+    url: ${DOCUMENT_DB_URL:jdbc:mysql://localhost:3306/document_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DOCUMENT_DB_USERNAME:root}
+    password: ${DOCUMENT_DB_PASSWORD:Axelblaze10}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:ClaimSwiftSecretKeyForJwtSigningAndVerificationMustBeAtLeast256BitsLong}
+
+# Eureka Client
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eurekapass}@localhost:8761/eureka/
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
+    instance-id: ${spring.application.name}:${server.port}
+
+# File Storage Configuration
+file:
+  storage:
+    path: ${FILE_STORAGE_PATH:./uploads}
+  max-size: 10485760  # 10MB in bytes
+
+# Logging
+logging:
+  level:
+    com.claimswift.documentservice: DEBUG
+    org.springframework.web: INFO

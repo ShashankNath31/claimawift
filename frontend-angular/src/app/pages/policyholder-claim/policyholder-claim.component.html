@@ -1,0 +1,140 @@
+<section class="claim-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Policyholder Claim Submission</p>
+    <h1>Submit claim with evidence</h1>
+    <p>Provide incident details and upload one PDF evidence document for automated validation.</p>
+  </app-shell-card>
+
+  <div class="layout">
+    <app-shell-card class="fade-up">
+      <h2>New Claim</h2>
+      <form [formGroup]="claimForm">
+        <label>
+          Select Policy
+          <select formControlName="policyNumber" (change)="onPolicyChanged(claimForm.controls.policyNumber.value)">
+            <option value="" disabled>Select policy</option>
+            <option *ngFor="let policy of policies" [value]="policy.policyNumber">
+              {{ policy.policyNumber }} - {{ policy.policyType }} ({{ policy.planName }})
+            </option>
+          </select>
+          <small class="field-error" *ngIf="fieldError('policyNumber', 'Policy number') as message">{{ message }}</small>
+        </label>
+        <p *ngIf="isPolicyLoading">Loading policy details...</p>
+        <p class="feedback warning" *ngIf="policyNotice">{{ policyNotice }}</p>
+        <p class="feedback error" *ngIf="policyError">{{ policyError }}</p>
+        <div class="policy-meta" *ngIf="selectedPolicy as policy">
+          <span><strong>Plan:</strong> {{ policy.planName }}</span>
+          <span><strong>Vehicle:</strong> {{ policy.vehicleRegistration }}</span>
+          <span><strong>Coverage:</strong> {{ policy.coverageAmount | number: '1.0-2' }}</span>
+          <span><strong>Already Claimed:</strong> {{ policy.claimedAmount | number: '1.0-2' }}</span>
+          <span><strong>Available:</strong> {{ policy.availableCoverage | number: '1.0-2' }}</span>
+          <span><strong>Expiry:</strong> {{ policy.expiryDate | date: 'mediumDate' }}</span>
+        </div>
+
+        <label>
+          Incident Date
+          <input type="date" formControlName="incidentDate" />
+          <small class="field-error" *ngIf="fieldError('incidentDate', 'Incident date') as message">{{ message }}</small>
+        </label>
+
+        <label>
+          Incident Location
+          <input type="text" formControlName="incidentLocation" />
+        </label>
+
+        <label>
+          Incident Description
+          <textarea rows="3" formControlName="incidentDescription"></textarea>
+        </label>
+
+        <label>
+          Claim Amount
+          <input type="number" min="1" [max]="claimAmountMax" formControlName="claimAmount" />
+          <input
+            class="amount-slider"
+            type="range"
+            min="1"
+            [max]="claimAmountMax"
+            [step]="sliderStep"
+            [value]="claimForm.controls.claimAmount.value || 1"
+            [disabled]="!selectedPolicy"
+            (input)="onClaimAmountSlider($event)"
+          />
+          <small class="field-error" *ngIf="fieldError('claimAmount', 'Claim amount') as message">{{ message }}</small>
+          <small class="field-error" *ngIf="selectedPolicy">
+            Available limit: {{ selectedPolicy.availableCoverage | number: '1.0-2' }}
+          </small>
+          <small class="field-help" *ngIf="selectedPolicy">
+            Remaining after claim: {{ remainingCoverageAfterClaim | number: '1.0-2' }}
+          </small>
+        </label>
+      </form>
+    </app-shell-card>
+
+    <app-shell-card class="fade-up">
+      <h2>Evidence Upload</h2>
+      <form [formGroup]="evidenceForm" (ngSubmit)="submitClaim()">
+        <label>
+          Evidence Type
+          <select formControlName="documentType">
+            <option *ngFor="let type of documentTypes" [value]="type">{{ formatDocumentType(type) }}</option>
+          </select>
+        </label>
+
+        <label>
+          Notes (optional)
+          <textarea rows="2" formControlName="description"></textarea>
+        </label>
+
+        <label>
+          Evidence File (PDF only, max 10MB)
+          <input type="file" accept=".pdf,application/pdf" (change)="onFileSelected($event)" />
+          <small class="field-error" *ngIf="fileError">{{ fileError }}</small>
+        </label>
+
+        <p class="feedback success" *ngIf="success">{{ success }}</p>
+        <p class="feedback error" *ngIf="error">{{ error }}</p>
+        <button type="button" class="retry-btn" *ngIf="pendingEvidenceClaim" (click)="retryEvidenceUpload()" [disabled]="isRetryingEvidence">
+          {{ isRetryingEvidence ? 'Retrying...' : 'Retry Evidence Upload' }}
+        </button>
+
+        <button type="submit" [disabled]="isSubmitting || !selectedPolicy || selectedPolicy.status !== 'ACTIVE'">
+          {{ isSubmitting ? 'Submitting...' : 'Submit Claim With Evidence' }}
+        </button>
+      </form>
+    </app-shell-card>
+  </div>
+
+  <app-shell-card>
+    <div class="table-header">
+      <h2>My Recent Claims</h2>
+      <button type="button" (click)="onRefreshClaims()" [disabled]="isLoading">Refresh</button>
+    </div>
+
+    <p *ngIf="isLoading">Loading claims...</p>
+    <div class="table-wrap" *ngIf="!isLoading">
+      <table *ngIf="claims.length; else empty">
+        <thead>
+          <tr>
+            <th>Claim Ref</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Submitted</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let claim of claims">
+            <td>{{ claim.claimNumber }}</td>
+            <td>{{ claim.status }}</td>
+            <td>{{ claim.claimAmount | number: '1.0-2' }}</td>
+            <td>{{ claim.createdAt | date: 'short' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <ng-template #empty>
+      <p>No claims submitted yet.</p>
+    </ng-template>
+  </app-shell-card>
+</section>

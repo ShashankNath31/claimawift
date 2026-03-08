@@ -1,0 +1,93 @@
+<div class="app-shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/">
+      <span class="brand-mark">CS</span>
+      <span class="brand-text">
+        <strong>ClaimSwift</strong>
+        <small>Claims and Settlements Portal</small>
+      </span>
+    </a>
+
+    <nav class="topbar-nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+      <a *ngIf="isAuthenticated$ | async" routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+
+      <a *ngIf="isPolicyholder$ | async" routerLink="/policies" routerLinkActive="active">Policies</a>
+      <a *ngIf="isPolicyholder$ | async" routerLink="/claim" routerLinkActive="active">Claim</a>
+      <a *ngIf="isPolicyholder$ | async" routerLink="/status" routerLinkActive="active">Status</a>
+      <a *ngIf="isPolicyholder$ | async" routerLink="/history" routerLinkActive="active">History</a>
+
+      <a *ngIf="isNonPolicyholder$ | async" routerLink="/claims" routerLinkActive="active">Claims</a>
+      <a *ngIf="canSeeDocuments$ | async" routerLink="/documents" routerLinkActive="active">Documents</a>
+      <a *ngIf="canAccessSettlements$ | async" routerLink="/payments" routerLinkActive="active">Settlements</a>
+      <a *ngIf="canSeeReports$ | async" routerLink="/reports" routerLinkActive="active">Analytics</a>
+      <a *ngIf="isAdmin$ | async" routerLink="/admin/users" routerLinkActive="active">User Admin</a>
+      <a *ngIf="!(isAuthenticated$ | async)" routerLink="/login" routerLinkActive="active">Sign In</a>
+      <a *ngIf="!(isAuthenticated$ | async)" class="cta-link" routerLink="/register">Register</a>
+      <div class="notification-menu" *ngIf="isAuthenticated$ | async">
+        <button type="button" class="bell-btn" (click)="toggleNotifications()" [attr.aria-expanded]="isNotificationOpen">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 3a5 5 0 0 0-5 5v2.6c0 1.2-.4 2.3-1.1 3.2L4 16h16l-1.9-2.2a5 5 0 0 1-1.1-3.2V8a5 5 0 0 0-5-5Zm0 18a2.5 2.5 0 0 0 2.3-1.5h-4.6A2.5 2.5 0 0 0 12 21Z"
+              fill="currentColor"
+            />
+          </svg>
+          <span class="bell-badge" *ngIf="unreadNotificationCount > 0">
+            {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
+          </span>
+        </button>
+        <div class="notification-dropdown" *ngIf="isNotificationOpen">
+          <div class="notification-head">
+            <strong>Notifications</strong>
+            <div class="notification-actions">
+              <button type="button" class="ghost-btn" (click)="loadNotifications()">Refresh</button>
+              <button type="button" class="ghost-btn" (click)="markAllNotificationsAsRead()">Mark all read</button>
+            </div>
+          </div>
+          <p class="notification-feedback" *ngIf="isNotificationLoading">Loading notifications...</p>
+          <p class="notification-feedback error" *ngIf="notificationError">{{ notificationError }}</p>
+          <ul class="notification-list" *ngIf="!isNotificationLoading && notifications.length">
+            <li
+              *ngFor="let notification of notifications"
+              [class.unread]="!notification.isRead"
+              (click)="openNotification(notification)"
+            >
+              <div>
+                <p class="title">{{ notification.title }}</p>
+                <p class="message">{{ notification.message }}</p>
+                <p class="meta" *ngIf="notification.createdAt">{{ notification.createdAt | date: 'short' }}</p>
+              </div>
+              <button
+                type="button"
+                class="ghost-btn mark-read"
+                *ngIf="!notification.isRead"
+                (click)="markNotificationAsRead(notification, $event)"
+              >
+                Mark read
+              </button>
+            </li>
+          </ul>
+          <p class="notification-feedback" *ngIf="!isNotificationLoading && !notifications.length">No notifications.</p>
+        </div>
+      </div>
+      <details class="user-menu" *ngIf="currentUser$ | async as user">
+        <summary class="user-pill">{{ user.username }}</summary>
+        <div class="user-dropdown">
+          <a routerLink="/profile">Profile</a>
+          <button class="ghost-btn" type="button" (click)="logout()">Sign Out</button>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <section class="toast-stack" *ngIf="toasts$ | async as toasts">
+    <article class="toast" *ngFor="let toast of toasts" [attr.data-tone]="toast.tone">
+      <p>{{ toast.text }}</p>
+      <button type="button" (click)="dismissToast(toast.id)" aria-label="Dismiss notification">x</button>
+    </article>
+  </section>
+
+  <main class="page-content">
+    <router-outlet />
+  </main>
+</div>

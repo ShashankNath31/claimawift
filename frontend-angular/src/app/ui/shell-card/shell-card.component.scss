@@ -1,0 +1,17 @@
+.shell-card {
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--border-color);
+  border-radius: 1.05rem;
+  padding: 1rem;
+  backdrop-filter: blur(10px);
+}
+
+.shell-card.accent {
+  background: linear-gradient(145deg, rgba(12, 122, 118, 0.12), rgba(227, 97, 59, 0.15));
+  border-color: rgba(12, 122, 118, 0.26);
+}
+
+.shell-card.outline {
+  background: transparent;
+  border-style: dashed;
+}

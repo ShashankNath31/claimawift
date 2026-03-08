@@ -1,0 +1,98 @@
+<section class="policies-page">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Policy Center</p>
+    <h1>My policies</h1>
+    <p>Track active and expired policies, renewal urgency, and available coverage.</p>
+  </app-shell-card>
+
+  <app-shell-card class="summary">
+    <div class="summary-grid">
+      <article>
+        <span>Total Policies</span>
+        <strong>{{ totalPolicies }}</strong>
+      </article>
+      <article>
+        <span>Active Policies</span>
+        <strong>{{ activePolicies }}</strong>
+      </article>
+      <article>
+        <span>Expired Policies</span>
+        <strong>{{ expiredPolicies }}</strong>
+      </article>
+    </div>
+  </app-shell-card>
+
+  <app-shell-card>
+    <div class="controls">
+      <label>
+        Search
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (ngModelChange)="applyFilters()"
+          placeholder="Policy number, type, vehicle..."
+        />
+      </label>
+      <label>
+        Filter
+        <select [(ngModel)]="selectedFilter" (ngModelChange)="applyFilters()">
+          <option value="ALL">All</option>
+          <option value="ACTIVE">Active</option>
+          <option value="EXPIRING_SOON">Expiring Soon (30 days)</option>
+          <option value="EXPIRED">Expired</option>
+        </select>
+      </label>
+      <button type="button" (click)="onRefreshPolicies()" [disabled]="isLoading">Refresh</button>
+    </div>
+
+    <p *ngIf="isLoading">Loading policies...</p>
+    <p class="feedback error" *ngIf="error && !isUsingFallbackPolicies">{{ error }}</p>
+    <p class="feedback warning" *ngIf="isUsingFallbackPolicies">{{ error }}</p>
+
+    <div class="table-wrap" *ngIf="!isLoading && (!error || isUsingFallbackPolicies)">
+      <table *ngIf="filteredPolicies.length; else emptyState">
+        <thead>
+          <tr>
+            <th>Policy</th>
+            <th>Type</th>
+            <th>Vehicle</th>
+            <th>Coverage</th>
+            <th>Available</th>
+            <th>Expiry</th>
+            <th>Status</th>
+            <th>Renewal</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let policy of pagedPolicies" [attr.data-tone]="rowTone(policy)">
+            <td>
+              <strong>{{ policy.policyNumber }}</strong>
+              <small>{{ policy.planName }}</small>
+            </td>
+            <td>{{ policy.policyType }}</td>
+            <td>{{ policy.vehicleRegistration }}</td>
+            <td>{{ policy.coverageAmount | number: '1.0-2' }}</td>
+            <td>{{ policy.availableCoverage | number: '1.0-2' }}</td>
+            <td>{{ policy.expiryDate | date: 'mediumDate' }}</td>
+            <td>
+              <span class="status-chip" [attr.data-status]="policy.status">{{ policy.status }}</span>
+            </td>
+            <td>
+              <span class="renewal-chip" [attr.data-tone]="rowTone(policy)">{{ renewalLabel(policy) }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="pagination" *ngIf="filteredPolicies.length > pageSize">
+        <button type="button" (click)="goToPreviousPage()" [disabled]="currentPage === 1">Previous</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" (click)="goToNextPage()" [disabled]="currentPage === totalPages">Next</button>
+      </div>
+    </div>
+
+    <ng-template #emptyState>
+      <p>No policies found for the selected filter/search.</p>
+    </ng-template>
+  </app-shell-card>
+</section>

@@ -1,0 +1,49 @@
+﻿server:
+  port: 8082
+
+spring:
+  application:
+    name: claim-service
+  datasource:
+    url: ${CLAIM_DB_URL:jdbc:mysql://localhost:3306/claim_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${CLAIM_DB_USERNAME:root}
+    password: ${CLAIM_DB_PASSWORD:Axelblaze10}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  cloud:
+    openfeign:
+      client:
+        config:
+          auth-service:
+            connectTimeout: 1000
+            readTimeout: 2000
+          reporting-service:
+            connectTimeout: 1000
+            readTimeout: 2000
+          notification-service:
+            connectTimeout: 1000
+            readTimeout: 2000
+          assessment-service:
+            connectTimeout: 1000
+            readTimeout: 2000
+          default:
+            connectTimeout: 1000
+            readTimeout: 2000
+
+claim:
+  claim-number-prefix: CLM
+  auto-assign-assessor: true
+  max-claim-amount: 1000000.00
+
+logging:
+  level:
+    com.claimswift.claimservice: DEBUG

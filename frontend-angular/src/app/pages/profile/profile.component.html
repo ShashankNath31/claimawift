@@ -1,0 +1,34 @@
+<section class="profile-page" *ngIf="user$ | async as user">
+  <app-shell-card variant="accent" class="fade-up">
+    <p class="eyebrow">Profile</p>
+    <h1>Account details</h1>
+    <p>View your account information and access role.</p>
+  </app-shell-card>
+
+  <app-shell-card class="details">
+    <div class="row">
+      <span class="label">Username</span>
+      <strong>{{ user.username }}</strong>
+    </div>
+    <div class="row">
+      <span class="label">Email</span>
+      <strong>{{ user.email }}</strong>
+    </div>
+    <div class="row" *ngIf="user.firstName || user.lastName">
+      <span class="label">Full Name</span>
+      <strong>{{ (user.firstName || '') + ' ' + (user.lastName || '') }}</strong>
+    </div>
+    <div class="row" *ngIf="user.phoneNumber">
+      <span class="label">Phone</span>
+      <strong>{{ user.phoneNumber }}</strong>
+    </div>
+    <div class="row">
+      <span class="label">Status</span>
+      <strong>{{ user.status }}</strong>
+    </div>
+    <div class="row">
+      <span class="label">Roles</span>
+      <strong>{{ rolesText$ | async }}</strong>
+    </div>
+  </app-shell-card>
+</section>

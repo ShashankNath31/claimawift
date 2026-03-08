@@ -1,0 +1,63 @@
+<section class="register-layout fade-up">
+  <div class="register-card surface-card">
+    <div class="header">
+      <h1>Register</h1>
+      <p>Create your policyholder account by filling all required fields.</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="row two-col">
+        <label>
+          First name
+          <input type="text" formControlName="firstName" placeholder="John" />
+          <small class="field-error" *ngIf="fieldError('firstName', 'First name') as message">{{ message }}</small>
+        </label>
+        <label>
+          Last name
+          <input type="text" formControlName="lastName" placeholder="Doe" />
+          <small class="field-error" *ngIf="fieldError('lastName', 'Last name') as message">{{ message }}</small>
+        </label>
+      </div>
+
+      <div class="row two-col">
+        <label>
+          Username
+          <input type="text" formControlName="username" placeholder="john123" />
+          <small class="field-error" *ngIf="fieldError('username', 'Username') as message">{{ message }}</small>
+        </label>
+        <label>
+          Email
+          <input type="email" formControlName="email" placeholder="john@example.com" />
+          <small class="field-error" *ngIf="fieldError('email', 'Email') as message">{{ message }}</small>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          Phone number
+          <input type="tel" formControlName="phoneNumber" placeholder="+91 9876543210" />
+          <small class="field-error" *ngIf="fieldError('phoneNumber', 'Phone number') as message">{{ message }}</small>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          Password
+          <input type="password" formControlName="password" placeholder="Minimum 8 characters" />
+          <small class="field-error" *ngIf="fieldError('password', 'Password') as message">{{ message }}</small>
+        </label>
+      </div>
+
+      <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+      <button type="submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Creating account...' : 'Create Account' }}
+      </button>
+    </form>
+
+    <p class="redirect">
+      Already have an account?
+      <a routerLink="/login">Login</a>
+    </p>
+  </div>
+</section>

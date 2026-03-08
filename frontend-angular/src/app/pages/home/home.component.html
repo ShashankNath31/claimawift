@@ -1,0 +1,33 @@
+<section class="hero fade-up">
+  <div class="hero-content surface-card">
+    <p class="eyebrow">ClaimSwift Insurance Portal</p>
+    <h1>Protect your vehicle, finances, and peace of mind with the right insurance coverage.</h1>
+    <p class="subtext">
+      Insurance helps reduce financial stress after accidents, theft, and unexpected damage. ClaimSwift provides one
+      secure space to report incidents, upload evidence, track approvals, and monitor settlements.
+    </p>
+
+    <div class="hero-actions" *ngIf="!(isAuthenticated$ | async)">
+      <a routerLink="/register" class="btn btn-primary">Register Policyholder</a>
+      <a routerLink="/login" class="btn btn-secondary">Sign In</a>
+    </div>
+    <div class="hero-actions" *ngIf="isAuthenticated$ | async">
+      <a routerLink="/dashboard" class="btn btn-primary">Go To Dashboard</a>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <article class="stat-card surface-card fade-up">
+      <h2>Why Insurance Matters</h2>
+      <p>It protects your savings from high repair and liability costs after unexpected incidents.</p>
+    </article>
+    <article class="stat-card surface-card fade-up delay-1">
+      <h2>Faster Claim Support</h2>
+      <p>Submit claim details quickly and keep all required documents in one place.</p>
+    </article>
+    <article class="stat-card surface-card fade-up delay-2">
+      <h2>Clear Status Tracking</h2>
+      <p>Follow each stage from claim submission to settlement without confusion.</p>
+    </article>
+  </div>
+</section>

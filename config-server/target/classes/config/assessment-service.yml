@@ -1,0 +1,29 @@
+﻿server:
+  port: 8084
+
+spring:
+  application:
+    name: assessment-service
+  datasource:
+    url: ${ASSESSMENT_DB_URL:jdbc:mysql://localhost:3306/assessment_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${ASSESSMENT_DB_USERNAME:root}
+    password: ${ASSESSMENT_DB_PASSWORD:Axelblaze10}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 3
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+
+assessment:
+  approval-threshold: 50000.00
+  auto-approval-limit: 10000.00
+
+logging:
+  level:
+    com.claimswift.assessmentservice: DEBUG

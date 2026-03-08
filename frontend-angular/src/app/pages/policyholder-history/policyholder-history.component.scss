@@ -1,0 +1,84 @@
+.history-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.eyebrow {
+  color: var(--teal-700);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0.35rem 0 0.55rem;
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.7rem;
+}
+
+button {
+  border: 1px solid rgba(15, 45, 55, 0.2);
+  border-radius: 0.9rem;
+  padding: 0.56rem 0.82rem;
+  background: rgba(255, 255, 255, 0.84);
+  color: var(--ink-900);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.feedback.error {
+  color: #bc280f;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+td button + button {
+  margin-left: 0.4rem;
+}
+
+.pagination {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+}
+
+.pagination span {
+  color: var(--ink-700);
+  font-size: 0.84rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.58rem 0.35rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.records-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 920px) {
+  .records-grid {
+    grid-template-columns: 1fr;
+  }
+}

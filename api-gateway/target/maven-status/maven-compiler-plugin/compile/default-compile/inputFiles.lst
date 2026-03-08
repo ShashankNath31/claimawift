@@ -1,0 +1,10 @@
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\ApiGatewayApplication.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\config\RateLimiterConfig.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\filter\GlobalJwtAuthFilter.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\filter\JwtAuthenticationFilter.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\config\CorsConfig.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\filter\CorrelationIdFilter.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\controller\FallbackController.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\config\SecurityConfig.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\util\ApiResponse.java
+A:\claimswift-master\api-gateway\src\main\java\com\claimswift\gateway\exception\GlobalExceptionHandler.java

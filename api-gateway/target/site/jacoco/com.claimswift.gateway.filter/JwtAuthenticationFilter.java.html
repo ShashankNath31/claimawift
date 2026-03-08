@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtAuthenticationFilter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">API Gateway</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.gateway.filter</a> &gt; <span class="el_source">JwtAuthenticationFilter.java</span></div><h1>JwtAuthenticationFilter.java</h1><pre class="source lang-java linenums">package com.claimswift.gateway.filter;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+
+<span class="fc" id="L22">@Slf4j</span>
+@Component
+public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory&lt;JwtAuthenticationFilter.Config&gt; {
+
+    @Value(&quot;${jwt.secret}&quot;)
+    private String jwtSecret;
+
+    public JwtAuthenticationFilter() {
+<span class="fc" id="L30">        super(Config.class);</span>
+<span class="fc" id="L31">    }</span>
+
+    @Override
+    public GatewayFilter apply(Config config) {
+<span class="nc" id="L35">        return (exchange, chain) -&gt; {</span>
+<span class="nc" id="L36">            ServerHttpRequest request = exchange.getRequest();</span>
+
+<span class="nc bnc" id="L38" title="All 2 branches missed.">            if (!isAuthMissing(request)) {</span>
+<span class="nc" id="L39">                final String token = getAuthHeader(request);</span>
+
+<span class="nc bnc" id="L41" title="All 4 branches missed.">                if (token == null || !token.startsWith(&quot;Bearer &quot;)) {</span>
+<span class="nc" id="L42">                    log.warn(&quot;Authorization header is not a Bearer token&quot;);</span>
+<span class="nc" id="L43">                    return onError(exchange, HttpStatus.UNAUTHORIZED);</span>
+                }
+
+<span class="nc" id="L46">                final String authToken = token.substring(7);</span>
+
+<span class="nc bnc" id="L48" title="All 2 branches missed.">                if (isJwtInvalid(authToken)) {</span>
+<span class="nc" id="L49">                    log.warn(&quot;Invalid JWT token received&quot;);</span>
+<span class="nc" id="L50">                    return onError(exchange, HttpStatus.UNAUTHORIZED);</span>
+                }
+
+<span class="nc" id="L53">                Claims claims = extractClaims(authToken);</span>
+<span class="nc" id="L54">                String role = claims.get(&quot;role&quot;, String.class);</span>
+
+<span class="nc" id="L56">                ServerHttpRequest modifiedRequest = request.mutate()</span>
+<span class="nc" id="L57">                        .header(&quot;X-User-Id&quot;, claims.getSubject())</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">                        .header(&quot;X-User-Role&quot;, role == null ? &quot;&quot; : role)</span>
+<span class="nc" id="L59">                        .build();</span>
+
+<span class="nc" id="L61">                return chain.filter(exchange.mutate().request(modifiedRequest).build());</span>
+            }
+
+<span class="nc bnc" id="L64" title="All 2 branches missed.">            if (isAuthMissing(request)) {</span>
+<span class="nc" id="L65">                log.warn(&quot;Authorization header is missing&quot;);</span>
+<span class="nc" id="L66">                return onError(exchange, HttpStatus.UNAUTHORIZED);</span>
+            }
+
+<span class="nc" id="L69">            return chain.filter(exchange);</span>
+        };
+    }
+
+    private Mono&lt;Void&gt; onError(ServerWebExchange exchange, HttpStatus httpStatus) {
+<span class="nc" id="L74">        ServerHttpResponse response = exchange.getResponse();</span>
+<span class="nc" id="L75">        response.setStatusCode(httpStatus);</span>
+<span class="nc" id="L76">        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);</span>
+<span class="nc" id="L77">        String requestId = exchange.getRequest().getHeaders().getFirst(&quot;X-Correlation-ID&quot;);</span>
+<span class="nc" id="L78">        String body = &quot;{\&quot;code\&quot;:\&quot;&quot; + httpStatus.name() + &quot;\&quot;,\&quot;message\&quot;:\&quot;Unauthorized\&quot;,\&quot;data\&quot;:null,\&quot;requestId\&quot;:\&quot;&quot;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">                + (requestId == null ? &quot;&quot; : requestId) + &quot;\&quot;}&quot;;</span>
+<span class="nc" id="L80">        return response.writeWith(Mono.just(response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8))));</span>
+    }
+
+    private String getAuthHeader(ServerHttpRequest request) {
+<span class="nc" id="L84">        return request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);</span>
+    }
+
+    private boolean isAuthMissing(ServerHttpRequest request) {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        return !request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION);</span>
+    }
+
+    private boolean isJwtInvalid(String token) {
+        try {
+<span class="nc" id="L93">            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L94">            Jwts.parser()</span>
+<span class="nc" id="L95">                    .verifyWith(key)</span>
+<span class="nc" id="L96">                    .build()</span>
+<span class="nc" id="L97">                    .parseSignedClaims(token);</span>
+<span class="nc" id="L98">            return false;</span>
+<span class="nc" id="L99">        } catch (Exception e) {</span>
+<span class="nc" id="L100">            log.error(&quot;JWT validation failed: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L101">            return true;</span>
+        }
+    }
+
+    private Claims extractClaims(String token) {
+<span class="nc" id="L106">        SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L107">        return Jwts.parser()</span>
+<span class="nc" id="L108">                .verifyWith(key)</span>
+<span class="nc" id="L109">                .build()</span>
+<span class="nc" id="L110">                .parseSignedClaims(token)</span>
+<span class="nc" id="L111">                .getPayload();</span>
+    }
+
+<span class="nc" id="L114">    public static class Config {</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

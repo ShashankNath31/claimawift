@@ -1,0 +1,53 @@
+﻿server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3306/auth_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${AUTH_DB_USERNAME:root}
+    password: ${AUTH_DB_PASSWORD:Axelblaze10}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+  mail:
+    host: ${AUTH_2FA_SMTP_HOST:smtp.gmail.com}
+    port: ${AUTH_2FA_SMTP_PORT:587}
+    username: ${AUTH_2FA_EMAIL_USERNAME:shashanknath31@gmail.com}
+    password: ${AUTH_2FA_EMAIL_APP_PASSWORD:snkpfrvxrmtpiloi}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+jwt:
+  expiration: 86400000
+
+auth:
+  two-factor:
+    enabled: ${AUTH_2FA_ENABLED:true}
+    otp-expiry-minutes: ${AUTH_2FA_OTP_EXPIRY_MINUTES:5}
+    max-attempts: ${AUTH_2FA_MAX_ATTEMPTS:5}
+    mail-from: ${AUTH_2FA_MAIL_FROM:${AUTH_2FA_EMAIL_USERNAME:shashanknath31@gmail.com}}
+
+logging:
+  level:
+    com.claimswift.authservice: DEBUG
+    org.springframework.security: DEBUG

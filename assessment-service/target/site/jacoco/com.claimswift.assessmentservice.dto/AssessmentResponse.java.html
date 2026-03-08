@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AssessmentResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Assessment Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.assessmentservice.dto</a> &gt; <span class="el_source">AssessmentResponse.java</span></div><h1>AssessmentResponse.java</h1><pre class="source lang-java linenums">package com.claimswift.assessmentservice.dto;
+
+import com.claimswift.assessmentservice.entity.Assessment;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
+
+<span class="nc bnc" id="L10" title="All 126 branches missed.">@Data</span>
+public class AssessmentResponse {
+<span class="nc" id="L12">    private Long id;</span>
+<span class="nc" id="L13">    private Long claimId;</span>
+<span class="nc" id="L14">    private Long assessorId;</span>
+<span class="nc" id="L15">    private BigDecimal riskScore;</span>
+<span class="nc" id="L16">    private Assessment.RiskLevel riskLevel;</span>
+<span class="nc" id="L17">    private Assessment.AssessmentDecision decision;</span>
+<span class="nc" id="L18">    private BigDecimal assessedAmount;</span>
+<span class="nc" id="L19">    private BigDecimal recommendedAmount;</span>
+<span class="nc" id="L20">    private String justification;</span>
+<span class="nc" id="L21">    private String notes;</span>
+<span class="nc" id="L22">    private Assessment.ValidationStatus validationStatus;</span>
+<span class="nc" id="L23">    private String ruleViolations;</span>
+<span class="nc" id="L24">    private LocalDateTime createdAt;</span>
+<span class="nc" id="L25">    private LocalDateTime updatedAt;</span>
+<span class="nc" id="L26">    private List&lt;AdjustmentResponse&gt; adjustments;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

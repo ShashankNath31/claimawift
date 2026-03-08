@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AssessmentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Assessment Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.assessmentservice.service</a> &gt; <span class="el_source">AssessmentService.java</span></div><h1>AssessmentService.java</h1><pre class="source lang-java linenums">package com.claimswift.assessmentservice.service;
+
+import com.claimswift.assessmentservice.client.ClaimServiceClient;
+import com.claimswift.assessmentservice.client.DocumentServiceClient;
+import com.claimswift.assessmentservice.client.PaymentServiceClient;
+import com.claimswift.assessmentservice.dto.AdjustmentRequest;
+import com.claimswift.assessmentservice.dto.AdjustmentResponse;
+import com.claimswift.assessmentservice.dto.AssessmentRequest;
+import com.claimswift.assessmentservice.dto.AssessmentResponse;
+import com.claimswift.assessmentservice.dto.DecisionRequest;
+import com.claimswift.assessmentservice.entity.Adjustment;
+import com.claimswift.assessmentservice.entity.Assessment;
+import com.claimswift.assessmentservice.repository.AdjustmentRepository;
+import com.claimswift.assessmentservice.repository.AssessmentRepository;
+import feign.FeignException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+<span class="fc" id="L26">@Slf4j</span>
+@Service
+<span class="fc" id="L28">@RequiredArgsConstructor</span>
+public class AssessmentService {
+
+    private final AssessmentRepository assessmentRepository;
+    private final AdjustmentRepository adjustmentRepository;
+    private final ClaimServiceClient claimServiceClient;
+    private final DocumentServiceClient documentServiceClient;
+    private final PaymentServiceClient paymentServiceClient;
+
+    @Transactional
+    public AssessmentResponse assessClaim(AssessmentRequest request, Long assessorId, String username) {
+<span class="nc" id="L39">        Assessment assessment = assessmentRepository.findByClaimId(request.getClaimId())</span>
+<span class="nc" id="L40">                .orElseGet(Assessment::new);</span>
+
+<span class="nc" id="L42">        assessment.setClaimId(request.getClaimId());</span>
+<span class="nc" id="L43">        assessment.setAssessorId(assessorId);</span>
+<span class="nc" id="L44">        assessment.setAssessedAmount(request.getAssessedAmount());</span>
+<span class="nc" id="L45">        assessment.setRecommendedAmount(request.getAssessedAmount());</span>
+<span class="nc" id="L46">        assessment.setJustification(request.getJustification());</span>
+<span class="nc" id="L47">        assessment.setNotes(request.getNotes());</span>
+<span class="nc" id="L48">        assessment.setDecision(Assessment.AssessmentDecision.PENDING_REVIEW);</span>
+<span class="nc" id="L49">        assessment.setValidationStatus(Assessment.ValidationStatus.VALID);</span>
+<span class="nc" id="L50">        assessment.setRiskLevel(Assessment.RiskLevel.MEDIUM);</span>
+<span class="nc" id="L51">        assessment.setRiskScore(BigDecimal.valueOf(50));</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        assessment.setCreatedBy(assessment.getCreatedBy() == null ? username : assessment.getCreatedBy());</span>
+<span class="nc" id="L53">        assessment.setUpdatedBy(username);</span>
+<span class="nc" id="L54">        Assessment savedAssessment = assessmentRepository.save(assessment);</span>
+
+        // Keep claim progression aligned once assessor starts work.
+<span class="nc" id="L57">        transitionClaimToUnderReview(savedAssessment.getClaimId(), username);</span>
+
+<span class="nc" id="L59">        return toAssessmentResponse(savedAssessment);</span>
+    }
+
+    @Transactional
+    public AssessmentResponse makeDecision(DecisionRequest request, Long assessorId, String username) {
+<span class="nc" id="L64">        Assessment assessment = assessmentRepository.findById(request.getAssessmentId())</span>
+<span class="nc" id="L65">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Assessment not found: &quot; + request.getAssessmentId()));</span>
+<span class="nc" id="L66">        ensureDocumentsExist(assessment.getClaimId());</span>
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">        BigDecimal finalAmount = request.getFinalAmount() != null</span>
+<span class="nc" id="L69">                ? request.getFinalAmount()</span>
+<span class="nc" id="L70">                : assessment.getAssessedAmount();</span>
+
+<span class="nc" id="L72">        assessment.setAssessorId(assessorId);</span>
+<span class="nc" id="L73">        assessment.setDecision(request.getDecision());</span>
+<span class="nc" id="L74">        assessment.setAssessedAmount(finalAmount);</span>
+<span class="nc" id="L75">        assessment.setRecommendedAmount(finalAmount);</span>
+<span class="nc" id="L76">        assessment.setJustification(request.getJustification());</span>
+<span class="nc" id="L77">        assessment.setUpdatedBy(username);</span>
+<span class="nc" id="L78">        Assessment saved = assessmentRepository.save(assessment);</span>
+
+<span class="nc" id="L80">        syncClaimStatusWithDecision(saved);</span>
+<span class="nc" id="L81">        processPaymentIfApproved(saved);</span>
+
+<span class="nc" id="L83">        return toAssessmentResponse(saved);</span>
+    }
+
+    @Transactional
+    public AdjustmentResponse addAdjustment(AdjustmentRequest request, Long adjustedBy, String username) {
+<span class="nc" id="L88">        Assessment assessment = assessmentRepository.findById(request.getAssessmentId())</span>
+<span class="nc" id="L89">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Assessment not found: &quot; + request.getAssessmentId()));</span>
+
+<span class="nc" id="L91">        BigDecimal previousAmount = assessment.getAssessedAmount();</span>
+<span class="nc" id="L92">        BigDecimal adjustedAmount = request.getAdjustedAmount();</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        BigDecimal differenceAmount = adjustedAmount.subtract(previousAmount == null ? BigDecimal.ZERO : previousAmount);</span>
+
+<span class="nc" id="L95">        Adjustment adjustment = Adjustment.builder()</span>
+<span class="nc" id="L96">                .assessmentId(request.getAssessmentId())</span>
+<span class="nc" id="L97">                .claimId(request.getClaimId())</span>
+<span class="nc" id="L98">                .previousAmount(previousAmount)</span>
+<span class="nc" id="L99">                .adjustedAmount(adjustedAmount)</span>
+<span class="nc" id="L100">                .differenceAmount(differenceAmount)</span>
+<span class="nc" id="L101">                .adjustmentType(request.getAdjustmentType())</span>
+<span class="nc" id="L102">                .reason(request.getReason())</span>
+<span class="nc" id="L103">                .detailedNotes(request.getDetailedNotes())</span>
+<span class="nc" id="L104">                .adjustedBy(adjustedBy)</span>
+<span class="nc" id="L105">                .createdBy(username)</span>
+<span class="nc" id="L106">                .updatedBy(username)</span>
+<span class="nc" id="L107">                .build();</span>
+
+<span class="nc" id="L109">        Adjustment savedAdjustment = adjustmentRepository.save(adjustment);</span>
+
+<span class="nc" id="L111">        assessment.setAssessedAmount(adjustedAmount);</span>
+<span class="nc" id="L112">        assessment.setRecommendedAmount(adjustedAmount);</span>
+<span class="nc" id="L113">        assessment.setDecision(Assessment.AssessmentDecision.ADJUSTED);</span>
+<span class="nc" id="L114">        assessment.setUpdatedBy(username);</span>
+<span class="nc" id="L115">        assessmentRepository.save(assessment);</span>
+<span class="nc" id="L116">        updateClaimStatus(assessment.getClaimId(), &quot;ADJUSTED&quot;, adjustedAmount, username);</span>
+
+<span class="nc" id="L118">        return toAdjustmentResponse(savedAdjustment);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentResponse getAssessment(Long id) {
+<span class="nc" id="L123">        Assessment assessment = assessmentRepository.findById(id)</span>
+<span class="nc" id="L124">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Assessment not found: &quot; + id));</span>
+<span class="nc" id="L125">        return toAssessmentResponse(assessment);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public AssessmentResponse getAssessmentByClaim(Long claimId) {
+<span class="nc" id="L130">        Assessment assessment = assessmentRepository.findByClaimId(claimId)</span>
+<span class="nc" id="L131">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Assessment not found for claim: &quot; + claimId));</span>
+<span class="nc" id="L132">        return toAssessmentResponse(assessment);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AssessmentResponse&gt; getAssessmentsByAssessor(Long assessorId) {
+<span class="nc" id="L137">        return assessmentRepository.findByAssessorId(assessorId)</span>
+<span class="nc" id="L138">                .stream()</span>
+<span class="nc" id="L139">                .map(this::toAssessmentResponse)</span>
+<span class="nc" id="L140">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AdjustmentResponse&gt; getAdjustmentsByAssessment(Long assessmentId) {
+<span class="nc" id="L145">        return adjustmentRepository.findByAssessmentId(assessmentId)</span>
+<span class="nc" id="L146">                .stream()</span>
+<span class="nc" id="L147">                .map(this::toAdjustmentResponse)</span>
+<span class="nc" id="L148">                .toList();</span>
+    }
+
+    private AssessmentResponse toAssessmentResponse(Assessment assessment) {
+<span class="nc" id="L152">        AssessmentResponse response = new AssessmentResponse();</span>
+<span class="nc" id="L153">        response.setId(assessment.getId());</span>
+<span class="nc" id="L154">        response.setClaimId(assessment.getClaimId());</span>
+<span class="nc" id="L155">        response.setAssessorId(assessment.getAssessorId());</span>
+<span class="nc" id="L156">        response.setRiskScore(assessment.getRiskScore());</span>
+<span class="nc" id="L157">        response.setRiskLevel(assessment.getRiskLevel());</span>
+<span class="nc" id="L158">        response.setDecision(assessment.getDecision());</span>
+<span class="nc" id="L159">        response.setAssessedAmount(assessment.getAssessedAmount());</span>
+<span class="nc" id="L160">        response.setRecommendedAmount(assessment.getRecommendedAmount());</span>
+<span class="nc" id="L161">        response.setJustification(assessment.getJustification());</span>
+<span class="nc" id="L162">        response.setNotes(assessment.getNotes());</span>
+<span class="nc" id="L163">        response.setValidationStatus(assessment.getValidationStatus());</span>
+<span class="nc" id="L164">        response.setRuleViolations(assessment.getRuleViolations());</span>
+<span class="nc" id="L165">        response.setCreatedAt(assessment.getCreatedAt());</span>
+<span class="nc" id="L166">        response.setUpdatedAt(assessment.getUpdatedAt());</span>
+<span class="nc" id="L167">        response.setAdjustments(getAdjustmentsByAssessment(assessment.getId()));</span>
+<span class="nc" id="L168">        return response;</span>
+    }
+
+    private AdjustmentResponse toAdjustmentResponse(Adjustment adjustment) {
+<span class="nc" id="L172">        AdjustmentResponse response = new AdjustmentResponse();</span>
+<span class="nc" id="L173">        response.setId(adjustment.getId());</span>
+<span class="nc" id="L174">        response.setAssessmentId(adjustment.getAssessmentId());</span>
+<span class="nc" id="L175">        response.setClaimId(adjustment.getClaimId());</span>
+<span class="nc" id="L176">        response.setPreviousAmount(adjustment.getPreviousAmount());</span>
+<span class="nc" id="L177">        response.setAdjustedAmount(adjustment.getAdjustedAmount());</span>
+<span class="nc" id="L178">        response.setDifferenceAmount(adjustment.getDifferenceAmount());</span>
+<span class="nc" id="L179">        response.setAdjustmentType(adjustment.getAdjustmentType());</span>
+<span class="nc" id="L180">        response.setReason(adjustment.getReason());</span>
+<span class="nc" id="L181">        response.setDetailedNotes(adjustment.getDetailedNotes());</span>
+<span class="nc" id="L182">        response.setAdjustedBy(adjustment.getAdjustedBy());</span>
+<span class="nc" id="L183">        response.setCreatedAt(adjustment.getCreatedAt());</span>
+<span class="nc" id="L184">        response.setUpdatedAt(adjustment.getUpdatedAt());</span>
+<span class="nc" id="L185">        return response;</span>
+    }
+
+    private void ensureDocumentsExist(Long claimId) {
+<span class="nc" id="L189">        Map&lt;String, Object&gt; response = documentServiceClient.getClaimDocumentCount(claimId);</span>
+<span class="nc" id="L190">        long documentCount = toLong(response.get(&quot;documentCount&quot;));</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">        if (documentCount &lt;= 0) {</span>
+<span class="nc" id="L192">            throw new IllegalStateException(&quot;At least one document is required before claim decision&quot;);</span>
+        }
+<span class="nc" id="L194">    }</span>
+
+    private void syncClaimStatusWithDecision(Assessment assessment) {
+<span class="nc" id="L197">        String status = mapDecisionToClaimStatus(assessment.getDecision());</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        if (status == null) {</span>
+<span class="nc" id="L199">            return;</span>
+        }
+
+<span class="nc bnc" id="L202" title="All 4 branches missed.">        BigDecimal approvedAmount = &quot;APPROVED&quot;.equals(status) || &quot;ADJUSTED&quot;.equals(status)</span>
+<span class="nc" id="L203">                ? assessment.getRecommendedAmount()</span>
+<span class="nc" id="L204">                : null;</span>
+<span class="nc" id="L205">        updateClaimStatus(assessment.getClaimId(), status, approvedAmount, assessment.getUpdatedBy());</span>
+<span class="nc" id="L206">    }</span>
+
+    private void processPaymentIfApproved(Assessment assessment) {
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        if (assessment.getDecision() != Assessment.AssessmentDecision.APPROVED) {</span>
+<span class="nc" id="L210">            return;</span>
+        }
+
+<span class="nc" id="L213">        Map&lt;String, Object&gt; claim = claimServiceClient.getClaimForWorkflow(assessment.getClaimId());</span>
+<span class="nc" id="L214">        Long policyholderId = toLongObj(claim.get(&quot;policyholderId&quot;));</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (policyholderId == null) {</span>
+<span class="nc" id="L216">            throw new IllegalStateException(&quot;Claim policyholderId is missing for claim &quot; + assessment.getClaimId());</span>
+        }
+
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        BigDecimal amount = assessment.getRecommendedAmount() != null</span>
+<span class="nc" id="L220">                ? assessment.getRecommendedAmount()</span>
+<span class="nc" id="L221">                : toBigDecimal(claim.get(&quot;approvedAmount&quot;));</span>
+
+<span class="nc bnc" id="L223" title="All 4 branches missed.">        if (amount == null || amount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L224">            amount = toBigDecimal(claim.get(&quot;claimAmount&quot;));</span>
+        }
+<span class="nc bnc" id="L226" title="All 4 branches missed.">        if (amount == null || amount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="nc" id="L227">            throw new IllegalStateException(&quot;Approved amount is missing for payment processing&quot;);</span>
+        }
+
+<span class="nc" id="L230">        Map&lt;String, Object&gt; paymentRequest = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L231">        paymentRequest.put(&quot;claimId&quot;, assessment.getClaimId());</span>
+<span class="nc" id="L232">        paymentRequest.put(&quot;policyholderId&quot;, policyholderId);</span>
+<span class="nc" id="L233">        paymentRequest.put(&quot;amount&quot;, amount);</span>
+<span class="nc" id="L234">        paymentRequest.put(&quot;claimNumber&quot;, String.valueOf(claim.getOrDefault(&quot;claimNumber&quot;, assessment.getClaimId())));</span>
+<span class="nc" id="L235">        paymentRequest.put(&quot;forceSuccess&quot;, true);</span>
+
+<span class="nc" id="L237">        paymentServiceClient.autoProcessPayment(paymentRequest);</span>
+<span class="nc" id="L238">    }</span>
+
+    private void transitionClaimToUnderReview(Long claimId, String username) {
+        try {
+<span class="nc" id="L242">            updateClaimStatus(claimId, &quot;UNDER_REVIEW&quot;, null, username);</span>
+<span class="nc" id="L243">        } catch (Exception ex) {</span>
+<span class="nc" id="L244">            log.debug(&quot;Claim {} transition to UNDER_REVIEW skipped: {}&quot;, claimId, ex.getMessage());</span>
+<span class="nc" id="L245">        }</span>
+<span class="nc" id="L246">    }</span>
+
+    private void updateClaimStatus(Long claimId, String status, BigDecimal approvedAmount, String username) {
+<span class="nc" id="L249">        Map&lt;String, Object&gt; update = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L250">        update.put(&quot;status&quot;, status);</span>
+<span class="nc" id="L251">        update.put(&quot;notes&quot;, &quot;Synced from assessment-service by &quot; + username);</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        if (approvedAmount != null) {</span>
+<span class="nc" id="L253">            update.put(&quot;approvedAmount&quot;, approvedAmount);</span>
+        }
+        try {
+<span class="nc" id="L256">            claimServiceClient.updateClaimStatus(claimId, update);</span>
+<span class="nc" id="L257">        } catch (Exception ex) {</span>
+            // Idempotency guard: once claim is already advanced (e.g. PAID), do not fail retries.
+<span class="nc bnc" id="L259" title="All 2 branches missed.">            if (isInvalidTransitionError(ex)) {</span>
+<span class="nc" id="L260">                log.info(&quot;Skipping duplicate transition for claim {} -&gt; {}: {}&quot;, claimId, status, ex.getMessage());</span>
+<span class="nc" id="L261">                return;</span>
+            }
+<span class="nc" id="L263">            throw ex;</span>
+<span class="nc" id="L264">        }</span>
+<span class="nc" id="L265">    }</span>
+
+    private String mapDecisionToClaimStatus(Assessment.AssessmentDecision decision) {
+<span class="nc bnc" id="L268" title="All 4 branches missed.">        return switch (decision) {</span>
+<span class="nc" id="L269">            case APPROVED -&gt; &quot;APPROVED&quot;;</span>
+<span class="nc" id="L270">            case REJECTED -&gt; &quot;REJECTED&quot;;</span>
+<span class="nc" id="L271">            case ADJUSTED -&gt; &quot;ADJUSTED&quot;;</span>
+<span class="nc" id="L272">            default -&gt; null;</span>
+        };
+    }
+
+    private long toLong(Object value) {
+<span class="nc" id="L277">        Long parsed = toLongObj(value);</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        return parsed == null ? 0L : parsed;</span>
+    }
+
+    private Long toLongObj(Object value) {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L283">            return null;</span>
+        }
+<span class="nc bnc" id="L285" title="All 2 branches missed.">        if (value instanceof Number number) {</span>
+<span class="nc" id="L286">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L289">            return Long.parseLong(String.valueOf(value));</span>
+<span class="nc" id="L290">        } catch (Exception ex) {</span>
+<span class="nc" id="L291">            return null;</span>
+        }
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L297">            return null;</span>
+        }
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        if (value instanceof BigDecimal bd) {</span>
+<span class="nc" id="L300">            return bd;</span>
+        }
+        try {
+<span class="nc" id="L303">            return new BigDecimal(String.valueOf(value));</span>
+<span class="nc" id="L304">        } catch (Exception ex) {</span>
+<span class="nc" id="L305">            return null;</span>
+        }
+    }
+
+    private boolean isInvalidTransitionError(Exception ex) {
+<span class="nc" id="L310">        String marker = &quot;Invalid claim status transition&quot;;</span>
+<span class="nc" id="L311">        Throwable cursor = ex;</span>
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        while (cursor != null) {</span>
+<span class="nc" id="L313">            String message = cursor.getMessage();</span>
+<span class="nc bnc" id="L314" title="All 4 branches missed.">            if (message != null &amp;&amp; message.contains(marker)) {</span>
+<span class="nc" id="L315">                return true;</span>
+            }
+<span class="nc bnc" id="L317" title="All 2 branches missed.">            if (cursor instanceof FeignException feignException) {</span>
+<span class="nc" id="L318">                String body = feignException.contentUTF8();</span>
+<span class="nc bnc" id="L319" title="All 4 branches missed.">                if (body != null &amp;&amp; body.contains(marker)) {</span>
+<span class="nc" id="L320">                    return true;</span>
+                }
+            }
+<span class="nc" id="L323">            cursor = cursor.getCause();</span>
+<span class="nc" id="L324">        }</span>
+<span class="nc" id="L325">        return false;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
