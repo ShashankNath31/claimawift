@@ -1,15 +1,4 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-Auth Service,com.claimswift.authservice,AuthServiceApplication,8,0,0,0,3,0,2,0,2,0
-Auth Service,com.claimswift.authservice.filter,CorrelationIdFilter.new HttpServletRequestWrapper() {...},48,0,4,0,10,0,6,0,4,0
-Auth Service,com.claimswift.authservice.filter,CorrelationIdFilter,40,0,4,0,11,0,5,0,3,0
-Auth Service,com.claimswift.authservice.exception,GlobalExceptionHandler,224,0,6,0,46,0,16,0,13,0
-Auth Service,com.claimswift.authservice.util,StandardResponse,50,0,4,0,17,0,9,0,7,0
-Auth Service,com.claimswift.authservice.controller,AuthController,157,0,4,0,34,0,18,0,16,0
 Auth Service,com.claimswift.authservice.service,AuthService,109,908,23,41,14,216,31,38,8,29
-Auth Service,com.claimswift.authservice.config,RoleDataInitializer,95,0,8,0,29,0,8,0,4,0
-Auth Service,com.claimswift.authservice.config,SecurityConfig,126,0,0,0,31,0,11,0,11,0
-Auth Service,com.claimswift.authservice.entity,Role.RoleName,0,44,0,0,0,5,0,1,0,1
 Auth Service,com.claimswift.authservice.entity,User.UserStatus,0,44,0,0,0,2,0,1,0,1
-Auth Service,com.claimswift.authservice.security,JwtTokenProvider,149,4,10,0,48,1,13,1,8,1
-Auth Service,com.claimswift.authservice.security,JwtAuthenticationFilter,85,0,8,0,23,0,7,0,3,0
-Auth Service,com.claimswift.authservice.security,CustomUserDetailsService,0,50,0,2,0,12,0,4,0,3
+Auth Service,com.claimswift.authservice.entity,Role.RoleName,0,44,0,0,0,5,0,1,0,1

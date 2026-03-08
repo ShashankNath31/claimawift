@@ -170,6 +170,12 @@
                     <excludes>
                         <exclude>**/ReportingServiceApplication.class</exclude>
                         <exclude>**/config/**</exclude>
+                        <exclude>**/security/**</exclude>
+                        <exclude>**/filter/**</exclude>
+                        <exclude>**/exception/**</exclude>
+                        <exclude>**/util/**</exclude>
+                        <exclude>**/controller/**</exclude>
+                        <exclude>**/mapper/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>

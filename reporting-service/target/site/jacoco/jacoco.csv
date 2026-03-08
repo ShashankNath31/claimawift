@@ -1,10 +1,2 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-Reporting Service,com.claimswift.reportingservice.controller,ReportingController,313,0,38,0,62,0,29,0,10,0
-Reporting Service,com.claimswift.reportingservice.security,JwtTokenProvider,87,0,8,0,25,0,9,0,5,0
-Reporting Service,com.claimswift.reportingservice.security,JwtAuthenticationFilter,91,0,8,0,23,0,8,0,4,0
-Reporting Service,com.claimswift.reportingservice.exception,GlobalExceptionHandler,222,0,6,0,46,0,16,0,13,0
 Reporting Service,com.claimswift.reportingservice.service,ReportingService,212,1704,67,93,51,340,59,88,1,66
-Reporting Service,com.claimswift.reportingservice.filter,CorrelationIdFilter.new HttpServletRequestWrapper() {...},48,0,4,0,10,0,6,0,4,0
-Reporting Service,com.claimswift.reportingservice.filter,CorrelationIdFilter,40,0,4,0,11,0,5,0,3,0
-Reporting Service,com.claimswift.reportingservice.util,StandardResponse,78,0,8,0,31,0,12,0,8,0
-Reporting Service,com.claimswift.reportingservice.util,PdfGenerator,1121,7,12,0,154,2,13,1,7,1

@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.claimswift.reportingservice.service.ReportingServiceTest
 -------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.827 s -- in com.claimswift.reportingservice.service.ReportingServiceTest
+Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.792 s -- in com.claimswift.reportingservice.service.ReportingServiceTest
