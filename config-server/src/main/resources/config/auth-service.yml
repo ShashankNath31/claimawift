@@ -26,7 +26,7 @@ spring:
     host: ${AUTH_2FA_SMTP_HOST:smtp.gmail.com}
     port: ${AUTH_2FA_SMTP_PORT:587}
     username: ${AUTH_2FA_EMAIL_USERNAME:shashanknath31@gmail.com}
-    password: ${AUTH_2FA_EMAIL_APP_PASSWORD:snkpfrvxrmtpiloi}
+    password: ${AUTH_2FA_EMAIL_APP_PASSWORD:pass}
     properties:
       mail:
         smtp:
