@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Auth Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.authservice.controller</a> &gt; <span class="el_source">AuthController.java</span></div><h1>AuthController.java</h1><pre class="source lang-java linenums">package com.claimswift.authservice.controller;
+
+import com.claimswift.authservice.dto.*;
+import com.claimswift.authservice.service.AuthService;
+import com.claimswift.authservice.util.StandardResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+@RestController
+@RequestMapping(&quot;/api/auth&quot;)
+public class AuthController {
+
+    private final AuthService authService;
+
+<span class="nc" id="L19">    public AuthController(AuthService authService) {</span>
+<span class="nc" id="L20">        this.authService = authService;</span>
+<span class="nc" id="L21">    }</span>
+
+    @PostMapping(&quot;/register&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;AuthResponse&gt;&gt; register(@Valid @RequestBody RegisterRequest request) {
+<span class="nc" id="L25">        AuthResponse response = authService.register(request);</span>
+<span class="nc" id="L26">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="nc" id="L27">                .body(StandardResponse.success(&quot;User registered successfully&quot;, response));</span>
+    }
+
+    @PostMapping(&quot;/login&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;LoginChallengeResponse&gt;&gt; login(@Valid @RequestBody LoginRequest request) {
+<span class="nc" id="L32">        LoginChallengeResponse response = authService.login(request);</span>
+<span class="nc" id="L33">        return ResponseEntity.ok(StandardResponse.success(&quot;OTP sent to your registered email&quot;, response));</span>
+    }
+
+    @PostMapping(&quot;/login/verify-otp&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;AuthResponse&gt;&gt; verifyLoginOtp(
+            @Valid @RequestBody VerifyLoginOtpRequest request) {
+<span class="nc" id="L39">        AuthResponse response = authService.verifyLoginOtp(request);</span>
+<span class="nc" id="L40">        return ResponseEntity.ok(StandardResponse.success(&quot;Login successful&quot;, response));</span>
+    }
+
+    @PostMapping(&quot;/logout&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; logout(HttpServletRequest request) {
+<span class="nc" id="L45">        String token = extractTokenFromRequest(request);</span>
+<span class="nc" id="L46">        authService.logout(token);</span>
+<span class="nc" id="L47">        return ResponseEntity.ok(StandardResponse.success(&quot;Logout successful&quot;, null));</span>
+    }
+
+    @PostMapping(&quot;/refresh&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;AuthResponse&gt;&gt; refresh(HttpServletRequest request) {
+<span class="nc" id="L52">        String token = extractTokenFromRequest(request);</span>
+<span class="nc" id="L53">        AuthResponse response = authService.refreshToken(token);</span>
+<span class="nc" id="L54">        return ResponseEntity.ok(StandardResponse.success(&quot;Token refreshed&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/me&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;UserDTO&gt;&gt; getCurrentUser(@RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L60">        UserDTO user = authService.getCurrentUser(userId);</span>
+<span class="nc" id="L61">        return ResponseEntity.ok(StandardResponse.success(user));</span>
+    }
+
+    @GetMapping(&quot;/adjusters&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;UserDTO&gt;&gt;&gt; getAdjusters() {
+<span class="nc" id="L67">        return ResponseEntity.ok(StandardResponse.success(authService.getAdjusters()));</span>
+    }
+
+    @GetMapping(&quot;/managers&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;UserDTO&gt;&gt;&gt; getManagers() {
+<span class="nc" id="L73">        return ResponseEntity.ok(StandardResponse.success(authService.getManagers()));</span>
+    }
+
+    @GetMapping(&quot;/admin/users&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;UserDTO&gt;&gt;&gt; getAllUsers() {
+<span class="nc" id="L79">        return ResponseEntity.ok(StandardResponse.success(authService.getAllUsers()));</span>
+    }
+
+    @GetMapping(&quot;/admin/users/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;UserDTO&gt;&gt; getUserById(@PathVariable(&quot;id&quot;) Long userId) {
+<span class="nc" id="L85">        return ResponseEntity.ok(StandardResponse.success(authService.getUserById(userId)));</span>
+    }
+
+    @PostMapping(&quot;/admin/users&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;UserDTO&gt;&gt; createInternalUser(
+            @Valid @RequestBody AdminCreateUserRequest request,
+            @RequestAttribute(&quot;username&quot;) String actorUsername) {
+<span class="nc" id="L93">        UserDTO user = authService.createInternalUser(request, actorUsername);</span>
+<span class="nc" id="L94">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="nc" id="L95">                .body(StandardResponse.success(&quot;User created successfully&quot;, user));</span>
+    }
+
+    @PutMapping(&quot;/admin/users/{id}/roles&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;UserDTO&gt;&gt; updateUserRoles(
+            @PathVariable(&quot;id&quot;) Long userId,
+            @Valid @RequestBody UserRoleUpdateRequest request,
+            @RequestAttribute(&quot;username&quot;) String actorUsername) {
+<span class="nc" id="L104">        UserDTO user = authService.updateUserRoles(userId, request.getRoles(), actorUsername);</span>
+<span class="nc" id="L105">        return ResponseEntity.ok(StandardResponse.success(&quot;User roles updated&quot;, user));</span>
+    }
+
+    @PatchMapping(&quot;/admin/users/{id}/status&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;UserDTO&gt;&gt; updateUserStatus(
+            @PathVariable(&quot;id&quot;) Long userId,
+            @Valid @RequestBody UserStatusUpdateRequest request,
+            @RequestAttribute(&quot;username&quot;) String actorUsername) {
+<span class="nc" id="L114">        UserDTO user = authService.updateUserStatus(userId, request.getStatus(), actorUsername);</span>
+<span class="nc" id="L115">        return ResponseEntity.ok(StandardResponse.success(&quot;User status updated&quot;, user));</span>
+    }
+
+    @GetMapping(&quot;/health&quot;)
+    public ResponseEntity&lt;String&gt; health() {
+<span class="nc" id="L120">        return ResponseEntity.ok(&quot;Auth Service is running&quot;);</span>
+    }
+
+    private String extractTokenFromRequest(HttpServletRequest request) {
+<span class="nc" id="L124">        String bearerToken = request.getHeader(&quot;Authorization&quot;);</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">        if (bearerToken != null &amp;&amp; bearerToken.startsWith(&quot;Bearer &quot;)) {</span>
+<span class="nc" id="L126">            return bearerToken.substring(7);</span>
+        }
+<span class="nc" id="L128">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

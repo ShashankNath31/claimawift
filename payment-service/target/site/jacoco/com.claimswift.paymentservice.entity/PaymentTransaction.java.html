@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PaymentTransaction.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Payment Service - Simulated Payment Gateway (Sandbox)</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.paymentservice.entity</a> &gt; <span class="el_source">PaymentTransaction.java</span></div><h1>PaymentTransaction.java</h1><pre class="source lang-java linenums">package com.claimswift.paymentservice.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+/**
+ * Payment Transaction Entity - Stores simulated payment transactions
+ * 
+ * IMPORTANT: This is a SIMULATED Payment Gateway (Sandbox Environment)
+ * No real money is processed. All transactions are simulated for testing.
+ */
+@Entity
+@Table(name = &quot;payment_transactions&quot;)
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class PaymentTransaction {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;transaction_id&quot;, unique = true, nullable = false, length = 100)
+    private String transactionId;
+
+    @Column(name = &quot;claim_id&quot;, nullable = false)
+    private Long claimId;
+
+    @Column(name = &quot;policyholder_id&quot;, nullable = false)
+    private Long policyholderId;
+
+    @Column(name = &quot;amount&quot;, nullable = false, precision = 15, scale = 2)
+    private BigDecimal amount;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;status&quot;, nullable = false, length = 30)
+    private PaymentStatus status;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;payment_method&quot;, length = 50)
+    private PaymentMethod paymentMethod;
+
+    @Column(name = &quot;beneficiary_name&quot;, length = 200)
+    private String beneficiaryName;
+
+    @Column(name = &quot;account_number&quot;, length = 100)
+    private String accountNumber;
+
+    @Column(name = &quot;ifsc_code&quot;, length = 20)
+    private String ifscCode;
+
+    @Column(name = &quot;bank_name&quot;, length = 100)
+    private String bankName;
+
+    @Column(name = &quot;reference_number&quot;, length = 100)
+    private String referenceNumber;
+
+    @Column(name = &quot;simulation_mode&quot;, nullable = false)
+    @Builder.Default
+    private Boolean simulationMode = true;
+
+    @Column(name = &quot;simulation_result&quot;, length = 50)
+    private String simulationResult;
+
+    @Column(name = &quot;failure_reason&quot;, length = 500)
+    private String failureReason;
+
+    @Column(name = &quot;processed_by&quot;)
+    private Long processedBy;
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;)
+    private LocalDateTime updatedAt;
+
+    @Column(name = &quot;created_by&quot;)
+    private String createdBy;
+
+    @Column(name = &quot;updated_by&quot;)
+    private String updatedBy;
+
+    /**
+     * Payment Status - Simulated
+     */
+<span class="fc" id="L97">    public enum PaymentStatus {</span>
+<span class="fc" id="L98">        INITIATED,</span>
+<span class="fc" id="L99">        PROCESSING,</span>
+<span class="fc" id="L100">        APPROVED,</span>
+<span class="fc" id="L101">        REJECTED,</span>
+<span class="fc" id="L102">        PENDING_VERIFICATION,</span>
+<span class="fc" id="L103">        FAILED,</span>
+<span class="fc" id="L104">        REFUNDED,</span>
+<span class="fc" id="L105">        CANCELLED</span>
+    }
+
+    /**
+     * Payment Method
+     */
+<span class="fc" id="L111">    public enum PaymentMethod {</span>
+<span class="fc" id="L112">        BANK_TRANSFER,</span>
+<span class="fc" id="L113">        CHEQUE,</span>
+<span class="fc" id="L114">        UPI,</span>
+<span class="fc" id="L115">        NEFT,</span>
+<span class="fc" id="L116">        RTGS,</span>
+<span class="fc" id="L117">        IMPS</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

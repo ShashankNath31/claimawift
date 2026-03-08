@@ -1,0 +1,14 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Notification Service,com.claimswift.notificationservice.security,WebSocketAuthInterceptor,157,7,22,0,45,2,16,2,5,2
+Notification Service,com.claimswift.notificationservice.security,SecurityConfig,0,94,0,0,0,18,0,5,0,5
+Notification Service,com.claimswift.notificationservice.security,JwtTokenProvider,129,7,12,0,42,2,11,2,5,2
+Notification Service,com.claimswift.notificationservice.security,JwtAuthenticationFilter,73,25,6,2,14,8,4,3,0,3
+Notification Service,com.claimswift.notificationservice.dto,NotificationMessage,0,39,0,0,0,14,0,1,0,1
+Notification Service,com.claimswift.notificationservice.filter,CorrelationIdFilter.new HttpServletRequestWrapper() {...},3,45,1,3,1,9,1,5,0,4
+Notification Service,com.claimswift.notificationservice.filter,CorrelationIdFilter,3,37,3,1,0,11,2,3,0,3
+Notification Service,com.claimswift.notificationservice.controller,NotificationController,235,4,14,0,61,1,18,1,11,1
+Notification Service,com.claimswift.notificationservice.service,NotificationService,7,234,1,3,0,63,2,13,1,12
+Notification Service,com.claimswift.notificationservice.entity,Notification.NotificationStatus,0,44,0,0,0,5,0,1,0,1
+Notification Service,com.claimswift.notificationservice.entity,Notification.NotificationType,0,84,0,0,0,9,0,1,0,1
+Notification Service,com.claimswift.notificationservice.util,StandardResponse,46,0,4,0,16,0,8,0,6,0
+Notification Service,com.claimswift.notificationservice.exception,GlobalExceptionHandler,215,7,6,0,44,2,14,2,11,2

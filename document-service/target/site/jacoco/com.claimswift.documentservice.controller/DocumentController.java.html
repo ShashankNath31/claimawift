@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DocumentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Document Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.documentservice.controller</a> &gt; <span class="el_source">DocumentController.java</span></div><h1>DocumentController.java</h1><pre class="source lang-java linenums">package com.claimswift.documentservice.controller;
+
+import com.claimswift.documentservice.dto.DocumentResponse;
+import com.claimswift.documentservice.dto.DocumentUploadRequest;
+import com.claimswift.documentservice.entity.Document;
+import com.claimswift.documentservice.service.DocumentService;
+import com.claimswift.documentservice.util.StandardResponse;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Document Controller
+ */
+<span class="nc" id="L28">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/documents&quot;)
+@Validated
+@RequiredArgsConstructor
+public class DocumentController {
+
+    private final DocumentService documentService;
+
+    @PostMapping(value = &quot;/upload&quot;, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;DocumentResponse&gt;&gt; uploadDocument(
+            @RequestParam(&quot;file&quot;) MultipartFile file,
+            @RequestParam(&quot;claimId&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestParam(value = &quot;documentType&quot;, required = false) Document.DocumentType documentType,
+            @RequestParam(value = &quot;description&quot;, required = false) String description,
+            @RequestAttribute(&quot;userId&quot;) Long uploadedBy,
+            @RequestAttribute(&quot;username&quot;) String username) {
+
+<span class="nc" id="L47">        log.info(&quot;Document upload request for claim: {} by user: {}&quot;, claimId, username);</span>
+
+<span class="nc" id="L49">        DocumentUploadRequest request = new DocumentUploadRequest();</span>
+<span class="nc" id="L50">        request.setClaimId(claimId);</span>
+<span class="nc" id="L51">        request.setDocumentType(documentType);</span>
+<span class="nc" id="L52">        request.setDescription(description);</span>
+
+<span class="nc" id="L54">        DocumentResponse response = documentService.uploadDocument(file, request, uploadedBy, username);</span>
+<span class="nc" id="L55">        return ResponseEntity.ok(StandardResponse.success(&quot;Document uploaded successfully&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;DocumentResponse&gt;&gt; getDocument(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Document ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="nc" id="L63">        log.info(&quot;Get document request for id: {}&quot;, id);</span>
+<span class="nc" id="L64">        DocumentResponse response = documentService.getDocument(id, requesterUserId);</span>
+<span class="nc" id="L65">        return ResponseEntity.ok(StandardResponse.success(response));</span>
+    }
+
+    @GetMapping(&quot;/claim/{claimId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;DocumentResponse&gt;&gt;&gt; getDocumentsByClaim(
+            @PathVariable(&quot;claimId&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="nc" id="L73">        log.info(&quot;Get documents for claim: {}&quot;, claimId);</span>
+<span class="nc" id="L74">        List&lt;DocumentResponse&gt; documents = documentService.getDocumentsByClaim(claimId, requesterUserId);</span>
+<span class="nc" id="L75">        return ResponseEntity.ok(StandardResponse.success(documents));</span>
+    }
+
+    @GetMapping(&quot;/user/{userId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;DocumentResponse&gt;&gt;&gt; getDocumentsByUser(
+            @PathVariable(&quot;userId&quot;) @Positive(message = &quot;User ID must be positive&quot;) Long userId,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="nc" id="L83">        log.info(&quot;Get documents for user: {}&quot;, userId);</span>
+<span class="nc" id="L84">        List&lt;DocumentResponse&gt; documents = documentService.getDocumentsByUser(userId, requesterUserId);</span>
+<span class="nc" id="L85">        return ResponseEntity.ok(StandardResponse.success(documents));</span>
+    }
+
+    @GetMapping(&quot;/claim/{claimId}/type/{documentType}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;DocumentResponse&gt;&gt;&gt; getDocumentsByType(
+            @PathVariable(&quot;claimId&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @PathVariable(&quot;documentType&quot;) Document.DocumentType documentType,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="nc" id="L94">        log.info(&quot;Get documents for claim: {} and type: {}&quot;, claimId, documentType);</span>
+<span class="nc" id="L95">        List&lt;DocumentResponse&gt; documents = documentService.getDocumentsByType(claimId, documentType, requesterUserId);</span>
+<span class="nc" id="L96">        return ResponseEntity.ok(StandardResponse.success(documents));</span>
+    }
+
+    @GetMapping(&quot;/internal/claim/{claimId}/count&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; getClaimDocumentCount(
+            @PathVariable(&quot;claimId&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId) {
+<span class="nc" id="L103">        long count = documentService.countDocumentsByClaim(claimId);</span>
+<span class="nc" id="L104">        return ResponseEntity.ok(Map.of(&quot;claimId&quot;, claimId, &quot;documentCount&quot;, count));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; deleteDocument(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Document ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L113">        log.info(&quot;Delete document request for id: {} by user: {}&quot;, id, username);</span>
+<span class="nc" id="L114">        documentService.deleteDocument(id, requesterUserId, username);</span>
+<span class="nc" id="L115">        return ResponseEntity.ok(StandardResponse.success(&quot;Document deleted successfully&quot;, null));</span>
+    }
+
+    @GetMapping(&quot;/{id}/download&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;Resource&gt; downloadDocument(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Document ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) throws IOException {
+<span class="nc" id="L123">        log.info(&quot;Download document request for id: {}&quot;, id);</span>
+
+<span class="nc" id="L125">        Path filePath = documentService.getDocumentFilePath(id, requesterUserId);</span>
+<span class="nc" id="L126">        Resource resource = documentService.loadFileAsResource(filePath);</span>
+
+<span class="nc" id="L128">        DocumentResponse document = documentService.getDocument(id, requesterUserId);</span>
+
+<span class="nc" id="L130">        return ResponseEntity.ok()</span>
+<span class="nc" id="L131">                .contentType(MediaType.parseMediaType(document.getMimeType()))</span>
+<span class="nc" id="L132">                .header(HttpHeaders.CONTENT_DISPOSITION,</span>
+<span class="nc" id="L133">                        &quot;attachment; filename=\&quot;&quot; + document.getOriginalFileName() + &quot;\&quot;&quot;)</span>
+<span class="nc" id="L134">                .body(resource);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

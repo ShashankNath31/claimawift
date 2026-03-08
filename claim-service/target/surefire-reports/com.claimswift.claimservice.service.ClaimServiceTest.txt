@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.claimswift.claimservice.service.ClaimServiceTest
+-------------------------------------------------------------------------------
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.324 s -- in com.claimswift.claimservice.service.ClaimServiceTest

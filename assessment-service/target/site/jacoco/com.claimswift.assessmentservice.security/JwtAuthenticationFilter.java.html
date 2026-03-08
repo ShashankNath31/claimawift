@@ -20,7 +20,7 @@ import java.io.IOException;
 
 <span class="fc" id="L21">@Slf4j</span>
 @Component
-<span class="fc" id="L23">@RequiredArgsConstructor</span>
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -52,7 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 <span class="nc" id="L53">        } catch (Exception ex) {</span>
 <span class="nc" id="L54">            log.error(&quot;Could not set user authentication in security context&quot;, ex);</span>
-<span class="fc" id="L55">        }</span>
+        }
 
 <span class="fc" id="L57">        filterChain.doFilter(request, response);</span>
 <span class="fc" id="L58">    }</span>

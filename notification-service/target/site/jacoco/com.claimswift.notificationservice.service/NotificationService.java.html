@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Notification Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.notificationservice.service</a> &gt; <span class="el_source">NotificationService.java</span></div><h1>NotificationService.java</h1><pre class="source lang-java linenums">package com.claimswift.notificationservice.service;
+
+import com.claimswift.notificationservice.dto.NotificationMessage;
+import com.claimswift.notificationservice.entity.Notification;
+import com.claimswift.notificationservice.repository.NotificationRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L16">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class NotificationService {
+
+    private final NotificationRepository notificationRepository;
+    private final SimpMessagingTemplate messagingTemplate;
+
+    @Transactional
+    public NotificationMessage createAndSendNotification(Long userId, Long claimId, String title, 
+                                                         String message, Notification.NotificationType type,
+                                                         String actionUrl, Long senderId) {
+<span class="fc" id="L28">        Notification notification = Notification.builder()</span>
+<span class="fc" id="L29">                .userId(userId)</span>
+<span class="fc" id="L30">                .claimId(claimId)</span>
+<span class="fc" id="L31">                .title(title)</span>
+<span class="fc" id="L32">                .message(message)</span>
+<span class="fc" id="L33">                .type(type)</span>
+<span class="fc" id="L34">                .status(Notification.NotificationStatus.PENDING)</span>
+<span class="fc" id="L35">                .isRead(false)</span>
+<span class="fc" id="L36">                .actionUrl(actionUrl)</span>
+<span class="fc" id="L37">                .senderId(senderId)</span>
+<span class="fc" id="L38">                .build();</span>
+
+<span class="fc" id="L40">        Notification saved = notificationRepository.save(notification);</span>
+<span class="fc" id="L41">        log.info(&quot;Notification created for user {}: {}&quot;, userId, title);</span>
+
+<span class="fc" id="L43">        NotificationMessage messageDto = NotificationMessage.fromEntity(saved);</span>
+        
+<span class="fc" id="L45">        sendNotificationToUser(userId, messageDto);</span>
+        
+<span class="fc" id="L47">        saved.setStatus(Notification.NotificationStatus.SENT);</span>
+<span class="fc" id="L48">        notificationRepository.save(saved);</span>
+
+<span class="fc" id="L50">        return messageDto;</span>
+    }
+
+    public void sendNotificationToUser(Long userId, NotificationMessage message) {
+<span class="fc" id="L54">        String destination = &quot;/topic/notifications/&quot; + userId;</span>
+<span class="fc" id="L55">        messagingTemplate.convertAndSend(destination, message);</span>
+<span class="fc" id="L56">        log.debug(&quot;Notification sent to user {} at {}&quot;, userId, destination);</span>
+<span class="fc" id="L57">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;NotificationMessage&gt; getUserNotifications(Long userId) {
+<span class="fc" id="L61">        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)</span>
+<span class="fc" id="L62">                .stream()</span>
+<span class="fc" id="L63">                .map(NotificationMessage::fromEntity)</span>
+<span class="fc" id="L64">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;NotificationMessage&gt; getUnreadNotifications(Long userId) {
+<span class="fc" id="L69">        return notificationRepository.findByUserIdAndIsReadOrderByCreatedAtDesc(userId, false)</span>
+<span class="fc" id="L70">                .stream()</span>
+<span class="fc" id="L71">                .map(NotificationMessage::fromEntity)</span>
+<span class="fc" id="L72">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public long getUnreadCount(Long userId) {
+<span class="fc" id="L77">        return notificationRepository.countByUserIdAndIsRead(userId, false);</span>
+    }
+
+    @Transactional
+    public void markAsRead(Long notificationId, Long userId) {
+<span class="fc" id="L82">        int updated = notificationRepository.markAsRead(notificationId, userId, LocalDateTime.now());</span>
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        if (updated &gt; 0) {</span>
+<span class="fc" id="L84">            log.info(&quot;Notification {} marked as read by user {}&quot;, notificationId, userId);</span>
+        }
+<span class="fc" id="L86">    }</span>
+
+    @Transactional
+    public void markAllAsRead(Long userId) {
+<span class="fc" id="L90">        int updated = notificationRepository.markAllAsRead(userId, LocalDateTime.now());</span>
+<span class="fc" id="L91">        log.info(&quot;{} notifications marked as read for user {}&quot;, updated, userId);</span>
+<span class="fc" id="L92">    }</span>
+
+    @Transactional
+    public void deleteNotification(Long notificationId, Long userId) {
+<span class="fc" id="L96">        Notification notification = notificationRepository.findById(notificationId)</span>
+<span class="pc" id="L97">                .orElseThrow(() -&gt; new RuntimeException(&quot;Notification not found: &quot; + notificationId));</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        if (!notification.getUserId().equals(userId)) {</span>
+<span class="fc" id="L99">            throw new RuntimeException(&quot;Notification does not belong to user: &quot; + userId);</span>
+        }
+<span class="fc" id="L101">        notificationRepository.delete(notification);</span>
+<span class="fc" id="L102">    }</span>
+
+    public void sendClaimStatusUpdate(Long userId, Long claimId, String claimNumber, String status) {
+<span class="fc" id="L105">        String title = &quot;Claim Status Updated&quot;;</span>
+<span class="fc" id="L106">        String message = String.format(&quot;Your claim #%s status has been updated to: %s&quot;, claimNumber, status);</span>
+<span class="fc" id="L107">        String actionUrl = &quot;/status&quot;;</span>
+
+<span class="fc" id="L109">        createAndSendNotification(userId, claimId, title, message, </span>
+<span class="fc" id="L110">            Notification.NotificationType.CLAIM_STATUS_UPDATE, actionUrl, null);</span>
+<span class="fc" id="L111">    }</span>
+
+    public void sendClaimApprovedNotification(Long userId, Long claimId, String claimNumber) {
+<span class="fc" id="L114">        String title = &quot;Claim Approved&quot;;</span>
+<span class="fc" id="L115">        String message = String.format(&quot;Congratulations! Your claim #%s has been approved.&quot;, claimNumber);</span>
+<span class="fc" id="L116">        String actionUrl = &quot;/status&quot;;</span>
+
+<span class="fc" id="L118">        createAndSendNotification(userId, claimId, title, message, </span>
+<span class="fc" id="L119">            Notification.NotificationType.CLAIM_APPROVED, actionUrl, null);</span>
+<span class="fc" id="L120">    }</span>
+
+    public void sendPaymentProcessedNotification(Long userId, Long claimId, String claimNumber, String amount) {
+<span class="fc" id="L123">        String title = &quot;Payment Processed&quot;;</span>
+<span class="fc" id="L124">        String message = String.format(&quot;Payment of %s for claim #%s has been processed.&quot;, amount, claimNumber);</span>
+<span class="fc" id="L125">        String actionUrl = &quot;/history&quot;;</span>
+
+<span class="fc" id="L127">        createAndSendNotification(userId, claimId, title, message, </span>
+<span class="fc" id="L128">            Notification.NotificationType.PAYMENT_PROCESSED, actionUrl, null);</span>
+<span class="fc" id="L129">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

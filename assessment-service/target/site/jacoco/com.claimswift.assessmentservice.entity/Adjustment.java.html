@@ -16,57 +16,57 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = &quot;adjustments&quot;)
-<span class="nc bnc" id="L19" title="All 118 branches missed.">@Data</span>
-<span class="nc" id="L20">@Builder</span>
-<span class="fc" id="L21">@NoArgsConstructor</span>
-<span class="nc" id="L22">@AllArgsConstructor</span>
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Adjustment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-<span class="nc" id="L27">    private Long id;</span>
+    private Long id;
 
     @Column(name = &quot;assessment_id&quot;, nullable = false)
-<span class="nc" id="L30">    private Long assessmentId;</span>
+    private Long assessmentId;
 
     @Column(name = &quot;claim_id&quot;, nullable = false)
-<span class="nc" id="L33">    private Long claimId;</span>
+    private Long claimId;
 
     @Column(name = &quot;previous_amount&quot;, precision = 15, scale = 2)
-<span class="nc" id="L36">    private BigDecimal previousAmount;</span>
+    private BigDecimal previousAmount;
 
     @Column(name = &quot;adjusted_amount&quot;, precision = 15, scale = 2)
-<span class="nc" id="L39">    private BigDecimal adjustedAmount;</span>
+    private BigDecimal adjustedAmount;
 
     @Column(name = &quot;difference_amount&quot;, precision = 15, scale = 2)
-<span class="nc" id="L42">    private BigDecimal differenceAmount;</span>
+    private BigDecimal differenceAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(name = &quot;adjustment_type&quot;, nullable = false, length = 30)
-<span class="nc" id="L46">    private AdjustmentType adjustmentType;</span>
+    private AdjustmentType adjustmentType;
 
     @Column(name = &quot;reason&quot;, nullable = false, length = 1000)
-<span class="nc" id="L49">    private String reason;</span>
+    private String reason;
 
     @Column(name = &quot;detailed_notes&quot;, length = 2000)
-<span class="nc" id="L52">    private String detailedNotes;</span>
+    private String detailedNotes;
 
     @Column(name = &quot;adjusted_by&quot;, nullable = false)
-<span class="nc" id="L55">    private Long adjustedBy;</span>
+    private Long adjustedBy;
 
     @CreationTimestamp
     @Column(name = &quot;created_at&quot;, updatable = false)
-<span class="nc" id="L59">    private LocalDateTime createdAt;</span>
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = &quot;updated_at&quot;)
-<span class="nc" id="L63">    private LocalDateTime updatedAt;</span>
+    private LocalDateTime updatedAt;
 
     @Column(name = &quot;created_by&quot;)
-<span class="nc" id="L66">    private String createdBy;</span>
+    private String createdBy;
 
     @Column(name = &quot;updated_by&quot;)
-<span class="nc" id="L69">    private String updatedBy;</span>
+    private String updatedBy;
 
 <span class="fc" id="L71">    public enum AdjustmentType {</span>
 <span class="fc" id="L72">        DEPRECIATION_APPLIED,</span>

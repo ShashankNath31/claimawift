@@ -51,7 +51,7 @@ import java.util.function.Function;
 <span class="nc" id="L51">            roles.stream()</span>
 <span class="nc" id="L52">                    .map(SimpleGrantedAuthority::new)</span>
 <span class="nc" id="L53">                    .forEach(authorities::add);</span>
-        } else {
+<span class="nc" id="L54">        } else {</span>
 <span class="nc" id="L55">            String role = claims.get(&quot;role&quot;, String.class);</span>
 <span class="nc bnc" id="L56" title="All 4 branches missed.">            if (role != null &amp;&amp; !role.isBlank()) {</span>
 <span class="nc" id="L57">                authorities.add(new SimpleGrantedAuthority(role));</span>

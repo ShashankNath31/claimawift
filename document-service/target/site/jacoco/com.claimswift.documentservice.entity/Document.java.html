@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Document.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Document Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.documentservice.entity</a> &gt; <span class="el_source">Document.java</span></div><h1>Document.java</h1><pre class="source lang-java linenums">package com.claimswift.documentservice.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+/**
+ * Document Entity
+ */
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = &quot;documents&quot;)
+public class Document {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;claim_id&quot;, nullable = false)
+    private Long claimId;
+
+    @Column(name = &quot;uploaded_by&quot;, nullable = false)
+    private Long uploadedBy;
+
+    @Column(name = &quot;file_name&quot;, nullable = false)
+    private String fileName;
+
+    @Column(name = &quot;original_file_name&quot;)
+    private String originalFileName;
+
+    @Column(name = &quot;file_path&quot;, nullable = false)
+    private String filePath;
+
+    @Column(name = &quot;file_type&quot;)
+    private String fileType;
+
+    @Column(name = &quot;mime_type&quot;)
+    private String mimeType;
+
+    @Column(name = &quot;file_size&quot;)
+    private Long fileSize;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;document_type&quot;)
+    private DocumentType documentType;
+
+    @Column(name = &quot;description&quot;, length = 500)
+    private String description;
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;)
+    private LocalDateTime updatedAt;
+
+    @Column(name = &quot;created_by&quot;)
+    private String createdBy;
+
+    @Column(name = &quot;updated_by&quot;)
+    private String updatedBy;
+
+<span class="fc" id="L73">    public enum DocumentType {</span>
+<span class="fc" id="L74">        CLAIM_FORM,</span>
+<span class="fc" id="L75">        POLICY_DOCUMENT,</span>
+<span class="fc" id="L76">        ID_PROOF,</span>
+<span class="fc" id="L77">        VEHICLE_REGISTRATION,</span>
+<span class="fc" id="L78">        DRIVERS_LICENSE,</span>
+<span class="fc" id="L79">        POLICE_REPORT,</span>
+<span class="fc" id="L80">        MEDICAL_REPORT,</span>
+<span class="fc" id="L81">        REPAIR_ESTIMATE,</span>
+<span class="fc" id="L82">        PHOTO_EVIDENCE,</span>
+<span class="fc" id="L83">        OTHER</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

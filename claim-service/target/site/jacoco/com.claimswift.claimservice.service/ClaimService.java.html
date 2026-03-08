@@ -1,0 +1,944 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClaimService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Claim Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.claimservice.service</a> &gt; <span class="el_source">ClaimService.java</span></div><h1>ClaimService.java</h1><pre class="source lang-java linenums">package com.claimswift.claimservice.service;
+
+import com.claimswift.claimservice.client.AssessmentServiceClient;
+import com.claimswift.claimservice.client.AuthServiceClient;
+import com.claimswift.claimservice.client.NotificationServiceClient;
+import com.claimswift.claimservice.client.ReportingServiceClient;
+import com.claimswift.claimservice.dto.ClaimAuditEventResponse;
+import com.claimswift.claimservice.dto.ClaimBankDetailsRequest;
+import com.claimswift.claimservice.dto.ClaimBankDetailsResponse;
+import com.claimswift.claimservice.dto.ClaimRequest;
+import com.claimswift.claimservice.dto.ClaimResponse;
+import com.claimswift.claimservice.dto.ClaimStatusUpdateRequest;
+import com.claimswift.claimservice.dto.PolicyPortfolioResponse;
+import com.claimswift.claimservice.dto.PolicyResponse;
+import com.claimswift.claimservice.entity.ClaimAuditEvent;
+import com.claimswift.claimservice.entity.Claim;
+import com.claimswift.claimservice.entity.Policy;
+import com.claimswift.claimservice.mapper.ClaimMapper;
+import com.claimswift.claimservice.repository.ClaimAuditEventRepository;
+import com.claimswift.claimservice.repository.ClaimRepository;
+import com.claimswift.claimservice.repository.PolicyRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L48">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class ClaimService {
+
+    private final ClaimRepository claimRepository;
+    private final ClaimMapper claimMapper;
+    private final AssessmentServiceClient assessmentServiceClient;
+    private final AuthServiceClient authServiceClient;
+    private final ReportingServiceClient reportingServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
+    private final PolicyRepository policyRepository;
+    private final ClaimAuditEventRepository claimAuditEventRepository;
+    private final Map&lt;Claim.ClaimStatus, Set&lt;Claim.ClaimStatus&gt;&gt; allowedTransitions = buildAllowedTransitions();
+
+    @Transactional
+    public ClaimResponse submitClaim(ClaimRequest request, Long claimantId, String username) {
+<span class="fc" id="L65">        Policy policy = resolvePolicyForClaimSubmission(request, claimantId);</span>
+
+<span class="fc" id="L67">        Claim claim = claimMapper.toEntity(request);</span>
+<span class="fc" id="L68">        claim.setClaimNumber(generateClaimNumber());</span>
+<span class="fc" id="L69">        claim.setPolicyNumber(policy.getPolicyNumber());</span>
+<span class="fc" id="L70">        claim.setVehicleRegistration(policy.getVehicleRegistration());</span>
+<span class="fc" id="L71">        claim.setClaimantId(claimantId);</span>
+<span class="fc" id="L72">        applyClaimantSnapshot(claim, username);</span>
+<span class="fc" id="L73">        claim.setStatus(Claim.ClaimStatus.SUBMITTED);</span>
+<span class="fc" id="L74">        claim.setCreatedBy(username);</span>
+<span class="fc" id="L75">        claim.setUpdatedBy(username);</span>
+
+<span class="fc" id="L77">        Claim savedClaim = claimRepository.save(claim);</span>
+<span class="fc" id="L78">        log.info(&quot;Claim submitted: {}&quot;, savedClaim.getClaimNumber());</span>
+<span class="fc" id="L79">        recordAuditEvent(</span>
+<span class="fc" id="L80">                savedClaim,</span>
+<span class="fc" id="L81">                ClaimAuditEvent.AuditAction.CLAIM_SUBMITTED,</span>
+<span class="fc" id="L82">                null,</span>
+<span class="fc" id="L83">                Claim.ClaimStatus.SUBMITTED,</span>
+<span class="fc" id="L84">                username,</span>
+<span class="fc" id="L85">                &quot;Claim submitted by policyholder&quot;,</span>
+<span class="fc" id="L86">                savedClaim.getAdjusterId(),</span>
+<span class="fc" id="L87">                savedClaim.getApprovedAmount()</span>
+        );
+
+        // Report to Reporting Service
+<span class="fc" id="L91">        reportClaimEvent(savedClaim, &quot;CLAIM_SUBMITTED&quot;);</span>
+<span class="fc" id="L92">        notifyClaimStatus(savedClaim, Claim.ClaimStatus.SUBMITTED.name());</span>
+
+<span class="fc" id="L94">        return claimMapper.toResponse(savedClaim);</span>
+    }
+
+    @Transactional
+    public PolicyPortfolioResponse getMyPolicies(Long policyholderId) {
+<span class="fc" id="L99">        ensureDefaultPolicies(policyholderId);</span>
+
+<span class="fc" id="L101">        List&lt;Policy&gt; policies = policyRepository.findByPolicyholderIdOrderByExpiryDateDesc(policyholderId);</span>
+<span class="fc" id="L102">        LocalDate today = LocalDate.now();</span>
+<span class="fc" id="L103">        long activeCount = 0;</span>
+<span class="fc" id="L104">        long expiredCount = 0;</span>
+<span class="fc" id="L105">        List&lt;PolicyResponse&gt; policyResponses = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L107" title="All 2 branches covered.">        for (Policy policy : policies) {</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">            String status = policy.getExpiryDate().isBefore(today) ? &quot;EXPIRED&quot; : &quot;ACTIVE&quot;;</span>
+<span class="fc bfc" id="L109" title="All 2 branches covered.">            if (&quot;ACTIVE&quot;.equals(status)) {</span>
+<span class="fc" id="L110">                activeCount++;</span>
+<span class="fc" id="L111">            } else {</span>
+<span class="fc" id="L112">                expiredCount++;</span>
+            }
+
+<span class="fc" id="L115">            BigDecimal claimedAmount = claimRepository.sumClaimAmountByPolicyNumberExcludingStatuses(</span>
+<span class="fc" id="L116">                    policy.getPolicyNumber(),</span>
+<span class="fc" id="L117">                    List.of(Claim.ClaimStatus.REJECTED, Claim.ClaimStatus.CANCELLED)</span>
+            );
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">            BigDecimal available = policy.getCoverageAmount().subtract(claimedAmount == null ? BigDecimal.ZERO : claimedAmount);</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">            if (available.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="fc" id="L121">                available = BigDecimal.ZERO;</span>
+            }
+
+<span class="fc" id="L124">            policyResponses.add(PolicyResponse.builder()</span>
+<span class="fc" id="L125">                    .id(policy.getId())</span>
+<span class="fc" id="L126">                    .policyNumber(policy.getPolicyNumber())</span>
+<span class="fc" id="L127">                    .policyType(policy.getPolicyType())</span>
+<span class="fc" id="L128">                    .planName(policy.getPlanName())</span>
+<span class="fc" id="L129">                    .insurerName(policy.getInsurerName())</span>
+<span class="fc" id="L130">                    .vehicleRegistration(policy.getVehicleRegistration())</span>
+<span class="fc" id="L131">                    .coverageAmount(policy.getCoverageAmount())</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">                    .claimedAmount(claimedAmount == null ? BigDecimal.ZERO : claimedAmount)</span>
+<span class="fc" id="L133">                    .availableCoverage(available)</span>
+<span class="fc" id="L134">                    .startDate(policy.getStartDate())</span>
+<span class="fc" id="L135">                    .expiryDate(policy.getExpiryDate())</span>
+<span class="fc" id="L136">                    .status(status)</span>
+<span class="fc" id="L137">                    .build());</span>
+        }
+
+<span class="fc" id="L140">        return PolicyPortfolioResponse.builder()</span>
+<span class="fc" id="L141">                .totalPolicies((long) policyResponses.size())</span>
+<span class="fc" id="L142">                .activePolicies(activeCount)</span>
+<span class="fc" id="L143">                .expiredPolicies(expiredCount)</span>
+<span class="fc" id="L144">                .policies(policyResponses)</span>
+<span class="fc" id="L145">                .build();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ClaimResponse getClaimById(Long id) {
+<span class="nc" id="L150">        return getClaimById(id, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ClaimResponse getClaimById(Long id, Long requesterUserId) {
+<span class="fc" id="L155">        Claim claim = claimRepository.findById(id)</span>
+<span class="fc" id="L156">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + id));</span>
+<span class="fc" id="L157">        assertCanAccessClaim(claim, requesterUserId);</span>
+<span class="fc" id="L158">        return claimMapper.toResponse(claim);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ClaimResponse getClaimByNumber(String claimNumber) {
+<span class="nc" id="L163">        return getClaimByNumber(claimNumber, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ClaimResponse getClaimByNumber(String claimNumber, Long requesterUserId) {
+<span class="fc" id="L168">        Claim claim = claimRepository.findByClaimNumber(claimNumber)</span>
+<span class="fc" id="L169">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with number: &quot; + claimNumber));</span>
+<span class="fc" id="L170">        assertCanAccessClaim(claim, requesterUserId);</span>
+<span class="fc" id="L171">        return claimMapper.toResponse(claim);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; getClaimsByClaimant(Long claimantId) {
+<span class="fc" id="L176">        List&lt;Claim&gt; claims = claimRepository.findByClaimantId(claimantId);</span>
+<span class="fc" id="L177">        return claimMapper.toResponseList(claims);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; getClaimHistory(Long claimantId) {
+<span class="fc" id="L182">        List&lt;Claim&gt; claims = claimRepository.findByClaimantId(claimantId);</span>
+<span class="fc" id="L183">        return claimMapper.toResponseList(claims);</span>
+    }
+
+    @Transactional
+    public ClaimBankDetailsResponse upsertClaimBankDetails(
+            Long claimId,
+            ClaimBankDetailsRequest request,
+            Long requesterUserId,
+            String username
+    ) {
+<span class="fc" id="L193">        Claim claim = claimRepository.findById(claimId)</span>
+<span class="pc" id="L194">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + claimId));</span>
+
+<span class="pc bpc" id="L196" title="1 of 4 branches missed.">        if (requesterUserId == null || !claim.getClaimantId().equals(requesterUserId)) {</span>
+<span class="fc" id="L197">            throw new AccessDeniedException(&quot;You are not allowed to update bank details for this claim.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L200" title="1 of 4 branches missed.">        if (claim.getStatus() != Claim.ClaimStatus.APPROVED &amp;&amp; claim.getStatus() != Claim.ClaimStatus.PAYMENT_FAILED) {</span>
+<span class="fc" id="L201">            throw new IllegalArgumentException(&quot;Bank details can be updated only after claim approval.&quot;);</span>
+        }
+
+<span class="fc" id="L204">        claim.setBeneficiaryName(request.getBeneficiaryName().trim());</span>
+<span class="fc" id="L205">        claim.setBankAccountNumber(request.getAccountNumber().trim());</span>
+<span class="fc" id="L206">        claim.setIfscCode(request.getIfscCode().trim().toUpperCase());</span>
+<span class="fc" id="L207">        claim.setBankName(request.getBankName().trim());</span>
+<span class="fc" id="L208">        claim.setBankDetailsUpdatedAt(LocalDateTime.now());</span>
+<span class="fc" id="L209">        claim.setUpdatedBy(username);</span>
+
+<span class="fc" id="L211">        Claim updatedClaim = claimRepository.save(claim);</span>
+<span class="fc" id="L212">        recordAuditEvent(</span>
+<span class="fc" id="L213">                updatedClaim,</span>
+<span class="fc" id="L214">                ClaimAuditEvent.AuditAction.CLAIM_UPDATED,</span>
+<span class="fc" id="L215">                updatedClaim.getStatus(),</span>
+<span class="fc" id="L216">                updatedClaim.getStatus(),</span>
+<span class="fc" id="L217">                username,</span>
+<span class="fc" id="L218">                &quot;Policyholder updated settlement bank details&quot;,</span>
+<span class="fc" id="L219">                updatedClaim.getAdjusterId(),</span>
+<span class="fc" id="L220">                updatedClaim.getApprovedAmount()</span>
+        );
+
+<span class="fc" id="L223">        return toBankDetailsResponse(updatedClaim);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ClaimBankDetailsResponse getClaimBankDetails(Long claimId, Long requesterUserId) {
+<span class="fc" id="L228">        Claim claim = claimRepository.findById(claimId)</span>
+<span class="pc" id="L229">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + claimId));</span>
+
+<span class="fc bfc" id="L231" title="All 2 branches covered.">        if (isAdjusterOnly()) {</span>
+<span class="fc" id="L232">            throw new AccessDeniedException(&quot;Adjuster cannot access policyholder bank details.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L235" title="2 of 6 branches missed.">        if (isPolicyholderOnly() &amp;&amp; (requesterUserId == null || !claim.getClaimantId().equals(requesterUserId))) {</span>
+<span class="fc" id="L236">            throw new AccessDeniedException(&quot;You are not allowed to access bank details for this claim.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L239" title="All 2 branches covered.">        if (!hasSettlementBankDetails(claim)) {</span>
+<span class="fc" id="L240">            throw new IllegalArgumentException(&quot;Bank details are not available for this claim yet.&quot;);</span>
+        }
+
+<span class="fc" id="L243">        return toBankDetailsResponse(claim);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimAuditEventResponse&gt; getClaimAuditTrail(Long claimId) {
+<span class="fc" id="L248">        return getClaimAuditTrail(claimId, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimAuditEventResponse&gt; getClaimAuditTrail(Long claimId, Long requesterUserId) {
+<span class="fc" id="L253">        Claim claim = claimRepository.findById(claimId)</span>
+<span class="pc" id="L254">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + claimId));</span>
+<span class="fc" id="L255">        assertCanAccessClaim(claim, requesterUserId);</span>
+<span class="fc" id="L256">        return claimAuditEventRepository.findByClaimIdOrderByCreatedAtDesc(claimId).stream()</span>
+<span class="fc" id="L257">                .map(this::toAuditResponse)</span>
+<span class="fc" id="L258">                .toList();</span>
+    }
+
+    @Transactional
+    public ClaimResponse updateClaimStatus(Long claimId, ClaimStatusUpdateRequest request, Long requesterUserId, String username) {
+<span class="fc" id="L263">        Claim claim = claimRepository.findById(claimId)</span>
+<span class="pc" id="L264">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + claimId));</span>
+<span class="fc" id="L265">        assertCanUpdateClaim(claim, requesterUserId);</span>
+
+<span class="fc" id="L267">        Claim.ClaimStatus newStatus = request.getStatus();</span>
+<span class="fc" id="L268">        Claim.ClaimStatus oldStatus = claim.getStatus();</span>
+<span class="fc" id="L269">        validateRoleBasedStatusUpdate(newStatus);</span>
+<span class="fc" id="L270">        validateStatusTransition(oldStatus, newStatus);</span>
+
+<span class="fc" id="L272">        claim.updateStatus(newStatus, username);</span>
+
+<span class="pc bpc" id="L274" title="1 of 2 branches missed.">        if (request.getAssignedAdjusterId() != null) {</span>
+<span class="nc" id="L275">            claim.setAdjusterId(request.getAssignedAdjusterId());</span>
+        }
+
+<span class="fc" id="L278">        applyApprovedAmount(claim, newStatus, request.getApprovedAmount());</span>
+
+<span class="fc" id="L280">        Claim updatedClaim = claimRepository.save(claim);</span>
+<span class="fc" id="L281">        log.info(&quot;Claim {} status updated from {} to {}&quot;, claim.getClaimNumber(), oldStatus, newStatus);</span>
+<span class="fc" id="L282">        recordAuditEvent(</span>
+<span class="fc" id="L283">                updatedClaim,</span>
+<span class="fc" id="L284">                ClaimAuditEvent.AuditAction.CLAIM_STATUS_UPDATED,</span>
+<span class="fc" id="L285">                oldStatus,</span>
+<span class="fc" id="L286">                newStatus,</span>
+<span class="fc" id="L287">                username,</span>
+<span class="fc" id="L288">                request.getNotes(),</span>
+<span class="fc" id="L289">                updatedClaim.getAdjusterId(),</span>
+<span class="fc" id="L290">                updatedClaim.getApprovedAmount()</span>
+        );
+
+        // Report status change to Reporting Service
+<span class="fc" id="L294">        reportStatusChange(updatedClaim, oldStatus.name(), newStatus.name());</span>
+<span class="fc" id="L295">        notifyClaimStatus(updatedClaim, newStatus.name());</span>
+<span class="pc bpc" id="L296" title="1 of 4 branches missed.">        if (newStatus == Claim.ClaimStatus.ADJUSTED &amp;&amp; isAdjusterOnly()) {</span>
+<span class="fc" id="L297">            notifyManagersReviewRequested(updatedClaim, username, request.getNotes());</span>
+        }
+
+        // Notify Assessment Service if approved
+<span class="fc bfc" id="L301" title="All 2 branches covered.">        if (newStatus == Claim.ClaimStatus.APPROVED) {</span>
+<span class="fc" id="L302">            notifyAssessmentComplete(updatedClaim);</span>
+        }
+
+<span class="fc" id="L305">        return claimMapper.toResponse(updatedClaim);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; getClaimsByStatus(String status) {
+<span class="fc" id="L310">        Claim.ClaimStatus claimStatus = Claim.ClaimStatus.valueOf(status);</span>
+<span class="fc" id="L311">        List&lt;Claim&gt; claims = claimRepository.findByStatus(claimStatus);</span>
+<span class="fc" id="L312">        return claimMapper.toResponseList(claims);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Page&lt;ClaimResponse&gt; getClaimsPage(int page, int size, String status, String sortBy, String sortDir) {
+<span class="fc bfc" id="L317" title="All 2 branches covered.">        Sort sort = Sort.by(&quot;desc&quot;.equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC, sortBy);</span>
+<span class="fc" id="L318">        Pageable pageable = PageRequest.of(page, size, sort);</span>
+
+        Page&lt;Claim&gt; claimsPage;
+<span class="pc bpc" id="L321" title="1 of 4 branches missed.">        if (status != null &amp;&amp; !status.isBlank()) {</span>
+<span class="fc" id="L322">            Claim.ClaimStatus claimStatus = Claim.ClaimStatus.valueOf(status.toUpperCase());</span>
+<span class="fc" id="L323">            claimsPage = claimRepository.findByStatus(claimStatus, pageable);</span>
+<span class="fc" id="L324">        } else {</span>
+<span class="fc" id="L325">            claimsPage = claimRepository.findAll(pageable);</span>
+        }
+
+<span class="fc" id="L328">        return claimsPage.map(claimMapper::toResponse);</span>
+    }
+
+    @Transactional
+    public ClaimResponse updateClaim(Long id, ClaimRequest request, String username) {
+<span class="fc" id="L333">        Claim claim = claimRepository.findById(id)</span>
+<span class="pc" id="L334">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + id));</span>
+<span class="fc" id="L335">        claimMapper.updateEntityFromRequest(request, claim);</span>
+<span class="fc" id="L336">        claim.setUpdatedBy(username);</span>
+<span class="fc" id="L337">        Claim updatedClaim = claimRepository.save(claim);</span>
+<span class="fc" id="L338">        recordAuditEvent(</span>
+<span class="fc" id="L339">                updatedClaim,</span>
+<span class="fc" id="L340">                ClaimAuditEvent.AuditAction.CLAIM_UPDATED,</span>
+<span class="fc" id="L341">                updatedClaim.getStatus(),</span>
+<span class="fc" id="L342">                updatedClaim.getStatus(),</span>
+<span class="fc" id="L343">                username,</span>
+<span class="fc" id="L344">                &quot;Claim details updated&quot;,</span>
+<span class="fc" id="L345">                updatedClaim.getAdjusterId(),</span>
+<span class="fc" id="L346">                updatedClaim.getApprovedAmount()</span>
+        );
+<span class="fc" id="L348">        return claimMapper.toResponse(updatedClaim);</span>
+    }
+
+    @Transactional
+    public void deleteClaim(Long id) {
+<span class="fc bfc" id="L353" title="All 2 branches covered.">        if (!claimRepository.existsById(id)) {</span>
+<span class="fc" id="L354">            throw new RuntimeException(&quot;Claim not found with id: &quot; + id);</span>
+        }
+<span class="fc" id="L356">        claimRepository.deleteById(id);</span>
+<span class="fc" id="L357">    }</span>
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; getAssignedClaims(Long adjusterId) {
+<span class="fc" id="L361">        return claimMapper.toResponseList(claimRepository.findByStatusAndAdjusterId(Claim.ClaimStatus.UNDER_REVIEW, adjusterId));</span>
+    }
+
+    @Transactional
+    public ClaimResponse assignClaim(Long claimId, Long adjusterId, String username) {
+<span class="fc" id="L366">        Claim claim = claimRepository.findById(claimId)</span>
+<span class="pc" id="L367">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + claimId));</span>
+
+<span class="fc" id="L369">        Claim.ClaimStatus oldStatus = claim.getStatus();</span>
+<span class="fc" id="L370">        validateStatusTransition(claim.getStatus(), Claim.ClaimStatus.UNDER_REVIEW);</span>
+<span class="fc" id="L371">        claim.setAdjusterId(adjusterId);</span>
+<span class="fc" id="L372">        claim.updateStatus(Claim.ClaimStatus.UNDER_REVIEW, username);</span>
+<span class="fc" id="L373">        Claim updatedClaim = claimRepository.save(claim);</span>
+<span class="fc" id="L374">        recordAuditEvent(</span>
+<span class="fc" id="L375">                updatedClaim,</span>
+<span class="fc" id="L376">                ClaimAuditEvent.AuditAction.CLAIM_ASSIGNED,</span>
+<span class="fc" id="L377">                oldStatus,</span>
+<span class="fc" id="L378">                updatedClaim.getStatus(),</span>
+<span class="fc" id="L379">                username,</span>
+<span class="fc" id="L380">                &quot;Assigned to adjuster &quot; + adjusterId,</span>
+<span class="fc" id="L381">                adjusterId,</span>
+<span class="fc" id="L382">                updatedClaim.getApprovedAmount()</span>
+        );
+<span class="fc" id="L384">        notifyAdjusterAssignment(updatedClaim, adjusterId, username);</span>
+<span class="fc" id="L385">        return claimMapper.toResponse(updatedClaim);</span>
+    }
+
+    @Transactional
+    public ClaimResponse unassignClaim(Long claimId, String username) {
+<span class="fc" id="L390">        Claim claim = claimRepository.findById(claimId)</span>
+<span class="pc" id="L391">                .orElseThrow(() -&gt; new RuntimeException(&quot;Claim not found with id: &quot; + claimId));</span>
+
+<span class="fc" id="L393">        Claim.ClaimStatus oldStatus = claim.getStatus();</span>
+<span class="fc" id="L394">        claim.setAdjusterId(null);</span>
+
+<span class="fc bfc" id="L396" title="All 2 branches covered.">        if (oldStatus == Claim.ClaimStatus.UNDER_REVIEW) {</span>
+<span class="fc" id="L397">            claim.updateStatus(Claim.ClaimStatus.SUBMITTED, username);</span>
+<span class="fc" id="L398">        } else {</span>
+<span class="fc" id="L399">            claim.setUpdatedBy(username);</span>
+        }
+
+<span class="fc" id="L402">        Claim updatedClaim = claimRepository.save(claim);</span>
+<span class="fc" id="L403">        recordAuditEvent(</span>
+<span class="fc" id="L404">                updatedClaim,</span>
+<span class="fc" id="L405">                ClaimAuditEvent.AuditAction.CLAIM_UNASSIGNED,</span>
+<span class="fc" id="L406">                oldStatus,</span>
+<span class="fc" id="L407">                updatedClaim.getStatus(),</span>
+<span class="fc" id="L408">                username,</span>
+<span class="fc" id="L409">                &quot;Adjuster unassigned&quot;,</span>
+<span class="fc" id="L410">                null,</span>
+<span class="fc" id="L411">                updatedClaim.getApprovedAmount()</span>
+        );
+<span class="fc bfc" id="L413" title="All 2 branches covered.">        if (oldStatus != updatedClaim.getStatus()) {</span>
+<span class="fc" id="L414">            reportStatusChange(updatedClaim, oldStatus.name(), updatedClaim.getStatus().name());</span>
+<span class="fc" id="L415">            notifyClaimStatus(updatedClaim, updatedClaim.getStatus().name());</span>
+        }
+
+<span class="fc" id="L418">        return claimMapper.toResponse(updatedClaim);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Map&lt;String, Object&gt; getClaimStatistics() {
+<span class="fc" id="L423">        long total = claimRepository.count();</span>
+<span class="fc" id="L424">        long submitted = claimRepository.countByStatus(Claim.ClaimStatus.SUBMITTED);</span>
+<span class="fc" id="L425">        long underReview = claimRepository.countByStatus(Claim.ClaimStatus.UNDER_REVIEW);</span>
+<span class="fc" id="L426">        long approved = claimRepository.countByStatus(Claim.ClaimStatus.APPROVED);</span>
+<span class="fc" id="L427">        long rejected = claimRepository.countByStatus(Claim.ClaimStatus.REJECTED);</span>
+<span class="fc" id="L428">        long adjusted = claimRepository.countByStatus(Claim.ClaimStatus.ADJUSTED);</span>
+<span class="fc" id="L429">        long paid = claimRepository.countByStatus(Claim.ClaimStatus.PAID);</span>
+<span class="fc" id="L430">        long paymentFailed = claimRepository.countByStatus(Claim.ClaimStatus.PAYMENT_FAILED);</span>
+<span class="fc" id="L431">        long cancelled = claimRepository.countByStatus(Claim.ClaimStatus.CANCELLED);</span>
+
+<span class="fc" id="L433">        Map&lt;String, Object&gt; stats = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L434">        stats.put(&quot;totalClaims&quot;, total);</span>
+<span class="fc" id="L435">        stats.put(&quot;submittedClaims&quot;, submitted);</span>
+<span class="fc" id="L436">        stats.put(&quot;underReviewClaims&quot;, underReview);</span>
+<span class="fc" id="L437">        stats.put(&quot;approvedClaims&quot;, approved);</span>
+<span class="fc" id="L438">        stats.put(&quot;rejectedClaims&quot;, rejected);</span>
+<span class="fc" id="L439">        stats.put(&quot;adjustedClaims&quot;, adjusted);</span>
+<span class="fc" id="L440">        stats.put(&quot;paidClaims&quot;, paid);</span>
+<span class="fc" id="L441">        stats.put(&quot;paymentFailedClaims&quot;, paymentFailed);</span>
+<span class="fc" id="L442">        stats.put(&quot;cancelledClaims&quot;, cancelled);</span>
+<span class="fc" id="L443">        stats.put(&quot;closedClaims&quot;, paid);</span>
+<span class="fc" id="L444">        stats.put(&quot;approvedAmount&quot;, claimRepository.sumApprovedClaims());</span>
+<span class="fc" id="L445">        return stats;</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; searchClaims(String query) {
+<span class="fc" id="L450">        return claimMapper.toResponseList(claimRepository.searchClaims(query));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; searchMyClaims(
+            Long claimantId,
+            String query,
+            String status,
+            String fromDate,
+            String toDate
+    ) {
+<span class="fc" id="L461">        Claim.ClaimStatus parsedStatus = null;</span>
+<span class="pc bpc" id="L462" title="1 of 4 branches missed.">        if (status != null &amp;&amp; !status.isBlank()) {</span>
+<span class="fc" id="L463">            parsedStatus = Claim.ClaimStatus.valueOf(status.trim().toUpperCase());</span>
+        }
+
+<span class="fc" id="L466">        return claimMapper.toResponseList(claimRepository.searchMyClaims(</span>
+<span class="fc" id="L467">                claimantId,</span>
+<span class="fc" id="L468">                normalizeQuery(query),</span>
+<span class="fc" id="L469">                parsedStatus,</span>
+<span class="fc" id="L470">                parseDate(fromDate),</span>
+<span class="fc" id="L471">                parseDate(toDate)</span>
+        ));
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; getAllClaims() {
+<span class="fc" id="L477">        return claimMapper.toResponseList(claimRepository.findAll());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;ClaimResponse&gt; getClaimsByAdjuster(Long adjusterId) {
+<span class="fc" id="L482">        return claimMapper.toResponseList(claimRepository.findByAdjusterId(adjusterId));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Map&lt;String, Object&gt; getClaimsSummary(String startDate, String endDate) {
+<span class="fc" id="L487">        Map&lt;String, Object&gt; summary = new HashMap&lt;&gt;(getClaimStatistics());</span>
+<span class="fc" id="L488">        summary.put(&quot;startDate&quot;, startDate);</span>
+<span class="fc" id="L489">        summary.put(&quot;endDate&quot;, endDate);</span>
+<span class="fc" id="L490">        return summary;</span>
+    }
+
+    private String generateClaimNumber() {
+<span class="fc" id="L494">        return &quot;CLM-&quot; + UUID.randomUUID().toString().substring(0, 8).toUpperCase();</span>
+    }
+
+    private Policy resolvePolicyForClaimSubmission(ClaimRequest request, Long claimantId) {
+<span class="fc" id="L498">        ensureDefaultPolicies(claimantId);</span>
+
+<span class="pc bpc" id="L500" title="1 of 2 branches missed.">        String requestedPolicyNumber = request.getPolicyNumber() == null ? &quot;&quot; : request.getPolicyNumber().trim();</span>
+<span class="fc bfc" id="L501" title="All 2 branches covered.">        if (requestedPolicyNumber.isBlank()) {</span>
+<span class="fc" id="L502">            throw new IllegalArgumentException(&quot;Policy number is required for claim submission.&quot;);</span>
+        }
+
+<span class="fc" id="L505">        Policy policy = policyRepository.findByPolicyNumberAndPolicyholderId(requestedPolicyNumber, claimantId)</span>
+<span class="pc" id="L506">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Selected policy does not belong to this policyholder.&quot;));</span>
+
+<span class="fc" id="L508">        LocalDate today = LocalDate.now();</span>
+<span class="fc bfc" id="L509" title="All 2 branches covered.">        if (policy.getExpiryDate().isBefore(today)) {</span>
+<span class="fc" id="L510">            throw new IllegalArgumentException(&quot;Selected policy is expired and cannot be used for a new claim.&quot;);</span>
+        }
+
+<span class="fc" id="L513">        BigDecimal claimedAmount = claimRepository.sumClaimAmountByPolicyNumberExcludingStatuses(</span>
+<span class="fc" id="L514">                policy.getPolicyNumber(),</span>
+<span class="fc" id="L515">                List.of(Claim.ClaimStatus.REJECTED, Claim.ClaimStatus.CANCELLED)</span>
+        );
+<span class="pc bpc" id="L517" title="1 of 2 branches missed.">        BigDecimal used = claimedAmount == null ? BigDecimal.ZERO : claimedAmount;</span>
+<span class="fc" id="L518">        BigDecimal availableCoverage = policy.getCoverageAmount().subtract(used);</span>
+<span class="pc bpc" id="L519" title="1 of 2 branches missed.">        if (availableCoverage.compareTo(BigDecimal.ZERO) &lt; 0) {</span>
+<span class="nc" id="L520">            availableCoverage = BigDecimal.ZERO;</span>
+        }
+
+<span class="fc bfc" id="L523" title="All 2 branches covered.">        if (request.getClaimAmount().compareTo(availableCoverage) &gt; 0) {</span>
+<span class="fc" id="L524">            throw new IllegalArgumentException(</span>
+<span class="fc" id="L525">                    &quot;Requested claim amount exceeds available policy coverage. Available: &quot; + availableCoverage</span>
+            );
+        }
+
+<span class="fc" id="L529">        return policy;</span>
+    }
+
+    private void ensureDefaultPolicies(Long policyholderId) {
+<span class="pc bpc" id="L533" title="1 of 2 branches missed.">        if (policyRepository.existsByPolicyholderId(policyholderId)) {</span>
+<span class="fc" id="L534">            return;</span>
+        }
+
+<span class="nc" id="L537">        LocalDate today = LocalDate.now();</span>
+<span class="nc" id="L538">        Policy activePolicyOne = Policy.builder()</span>
+<span class="nc" id="L539">                .policyNumber(&quot;POL-&quot; + policyholderId + &quot;-A1&quot;)</span>
+<span class="nc" id="L540">                .policyholderId(policyholderId)</span>
+<span class="nc" id="L541">                .policyType(&quot;Motor Insurance&quot;)</span>
+<span class="nc" id="L542">                .planName(&quot;Comprehensive Plus&quot;)</span>
+<span class="nc" id="L543">                .insurerName(&quot;ClaimSwift Insurance Co.&quot;)</span>
+<span class="nc" id="L544">                .vehicleRegistration(&quot;MH12AB1234&quot;)</span>
+<span class="nc" id="L545">                .coverageAmount(new BigDecimal(&quot;500000.00&quot;))</span>
+<span class="nc" id="L546">                .startDate(today.minusMonths(6))</span>
+<span class="nc" id="L547">                .expiryDate(today.plusMonths(6))</span>
+<span class="nc" id="L548">                .build();</span>
+
+<span class="nc" id="L550">        Policy activePolicyTwo = Policy.builder()</span>
+<span class="nc" id="L551">                .policyNumber(&quot;POL-&quot; + policyholderId + &quot;-A2&quot;)</span>
+<span class="nc" id="L552">                .policyholderId(policyholderId)</span>
+<span class="nc" id="L553">                .policyType(&quot;Motor Insurance&quot;)</span>
+<span class="nc" id="L554">                .planName(&quot;Premium Shield&quot;)</span>
+<span class="nc" id="L555">                .insurerName(&quot;ClaimSwift Insurance Co.&quot;)</span>
+<span class="nc" id="L556">                .vehicleRegistration(&quot;DL08CD6789&quot;)</span>
+<span class="nc" id="L557">                .coverageAmount(new BigDecimal(&quot;750000.00&quot;))</span>
+<span class="nc" id="L558">                .startDate(today.minusMonths(4))</span>
+<span class="nc" id="L559">                .expiryDate(today.plusMonths(10))</span>
+<span class="nc" id="L560">                .build();</span>
+
+<span class="nc" id="L562">        Policy renewalSoonPolicy = Policy.builder()</span>
+<span class="nc" id="L563">                .policyNumber(&quot;POL-&quot; + policyholderId + &quot;-R1&quot;)</span>
+<span class="nc" id="L564">                .policyholderId(policyholderId)</span>
+<span class="nc" id="L565">                .policyType(&quot;Motor Insurance&quot;)</span>
+<span class="nc" id="L566">                .planName(&quot;Standard Cover&quot;)</span>
+<span class="nc" id="L567">                .insurerName(&quot;ClaimSwift Insurance Co.&quot;)</span>
+<span class="nc" id="L568">                .vehicleRegistration(&quot;KA03EF2468&quot;)</span>
+<span class="nc" id="L569">                .coverageAmount(new BigDecimal(&quot;300000.00&quot;))</span>
+<span class="nc" id="L570">                .startDate(today.minusMonths(11))</span>
+<span class="nc" id="L571">                .expiryDate(today.plusDays(18))</span>
+<span class="nc" id="L572">                .build();</span>
+
+<span class="nc" id="L574">        Policy expiredPolicy = Policy.builder()</span>
+<span class="nc" id="L575">                .policyNumber(&quot;POL-&quot; + policyholderId + &quot;-E1&quot;)</span>
+<span class="nc" id="L576">                .policyholderId(policyholderId)</span>
+<span class="nc" id="L577">                .policyType(&quot;Motor Insurance&quot;)</span>
+<span class="nc" id="L578">                .planName(&quot;Third Party Cover&quot;)</span>
+<span class="nc" id="L579">                .insurerName(&quot;ClaimSwift Insurance Co.&quot;)</span>
+<span class="nc" id="L580">                .vehicleRegistration(&quot;MH14XY4321&quot;)</span>
+<span class="nc" id="L581">                .coverageAmount(new BigDecimal(&quot;250000.00&quot;))</span>
+<span class="nc" id="L582">                .startDate(today.minusYears(2))</span>
+<span class="nc" id="L583">                .expiryDate(today.minusMonths(2))</span>
+<span class="nc" id="L584">                .build();</span>
+
+<span class="nc" id="L586">        policyRepository.saveAll(List.of(activePolicyOne, activePolicyTwo, renewalSoonPolicy, expiredPolicy));</span>
+<span class="nc" id="L587">    }</span>
+
+    private void reportClaimEvent(Claim claim, String eventType) {
+        try {
+<span class="fc" id="L591">            Map&lt;String, Object&gt; eventData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L592">            eventData.put(&quot;claimId&quot;, claim.getId());</span>
+<span class="fc" id="L593">            eventData.put(&quot;claimNumber&quot;, claim.getClaimNumber());</span>
+<span class="fc" id="L594">            eventData.put(&quot;eventType&quot;, eventType);</span>
+<span class="fc" id="L595">            eventData.put(&quot;timestamp&quot;, LocalDateTime.now());</span>
+<span class="fc" id="L596">            reportingServiceClient.reportClaimEvent(eventData);</span>
+<span class="pc" id="L597">        } catch (Exception e) {</span>
+<span class="nc" id="L598">            log.error(&quot;Failed to report claim event&quot;, e);</span>
+        }
+<span class="fc" id="L600">    }</span>
+
+    private void reportStatusChange(Claim claim, String oldStatus, String newStatus) {
+        try {
+<span class="fc" id="L604">            Map&lt;String, Object&gt; statusData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L605">            statusData.put(&quot;claimId&quot;, claim.getId());</span>
+<span class="fc" id="L606">            statusData.put(&quot;claimNumber&quot;, claim.getClaimNumber());</span>
+<span class="fc" id="L607">            statusData.put(&quot;oldStatus&quot;, oldStatus);</span>
+<span class="fc" id="L608">            statusData.put(&quot;newStatus&quot;, newStatus);</span>
+<span class="fc" id="L609">            statusData.put(&quot;timestamp&quot;, claim.getStatusChangedAt());</span>
+<span class="fc" id="L610">            reportingServiceClient.reportStatusChange(statusData);</span>
+<span class="pc" id="L611">        } catch (Exception e) {</span>
+<span class="nc" id="L612">            log.error(&quot;Failed to report status change&quot;, e);</span>
+        }
+<span class="fc" id="L614">    }</span>
+
+    private void notifyAssessmentComplete(Claim claim) {
+        try {
+<span class="fc" id="L618">            Map&lt;String, Object&gt; assessmentData = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L619">            assessmentData.put(&quot;claimId&quot;, claim.getId());</span>
+<span class="fc" id="L620">            assessmentData.put(&quot;claimNumber&quot;, claim.getClaimNumber());</span>
+<span class="fc" id="L621">            assessmentData.put(&quot;approvedAmount&quot;, claim.getApprovedAmount());</span>
+<span class="fc" id="L622">            assessmentServiceClient.notifyAssessmentComplete(assessmentData);</span>
+<span class="pc" id="L623">        } catch (Exception e) {</span>
+<span class="nc" id="L624">            log.error(&quot;Failed to notify assessment service&quot;, e);</span>
+        }
+<span class="fc" id="L626">    }</span>
+
+    private void notifyClaimStatus(Claim claim, String status) {
+        try {
+<span class="fc" id="L630">            Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L631">            payload.put(&quot;userId&quot;, claim.getClaimantId());</span>
+<span class="fc" id="L632">            payload.put(&quot;claimId&quot;, claim.getId());</span>
+<span class="fc" id="L633">            payload.put(&quot;claimNumber&quot;, claim.getClaimNumber());</span>
+<span class="fc" id="L634">            payload.put(&quot;status&quot;, status);</span>
+<span class="fc" id="L635">            notificationServiceClient.sendClaimStatusNotification(payload);</span>
+<span class="pc" id="L636">        } catch (Exception e) {</span>
+<span class="nc" id="L637">            log.error(&quot;Failed to notify notification service for claim {}&quot;, claim.getId(), e);</span>
+        }
+<span class="fc" id="L639">    }</span>
+
+    private void notifyAdjusterAssignment(Claim claim, Long adjusterId, String assignedBy) {
+        try {
+<span class="fc" id="L643">            Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L644">            payload.put(&quot;userId&quot;, adjusterId);</span>
+<span class="fc" id="L645">            payload.put(&quot;claimId&quot;, claim.getId());</span>
+<span class="fc" id="L646">            payload.put(&quot;title&quot;, &quot;New Claim Assigned&quot;);</span>
+<span class="fc" id="L647">            payload.put(</span>
+<span class="fc" id="L648">                    &quot;message&quot;,</span>
+<span class="fc" id="L649">                    String.format(&quot;Manager %s assigned claim %s for assessment.&quot;, assignedBy, claim.getClaimNumber())</span>
+            );
+<span class="fc" id="L651">            payload.put(&quot;type&quot;, &quot;SYSTEM_MESSAGE&quot;);</span>
+<span class="fc" id="L652">            payload.put(&quot;actionUrl&quot;, &quot;/claims&quot;);</span>
+<span class="fc" id="L653">            payload.put(&quot;senderId&quot;, null);</span>
+<span class="fc" id="L654">            notificationServiceClient.sendNotification(payload);</span>
+<span class="pc" id="L655">        } catch (Exception e) {</span>
+<span class="nc" id="L656">            log.error(&quot;Failed to send assignment notification for claim {}&quot;, claim.getId(), e);</span>
+        }
+<span class="fc" id="L658">    }</span>
+
+    private void notifyManagersReviewRequested(Claim claim, String requestedBy, String note) {
+<span class="fc" id="L661">        List&lt;Long&gt; managerIds = getActiveManagerIds();</span>
+<span class="pc bpc" id="L662" title="1 of 2 branches missed.">        if (managerIds.isEmpty()) {</span>
+<span class="nc" id="L663">            return;</span>
+        }
+<span class="fc" id="L665">        String detail = toTrimmedString(note);</span>
+<span class="fc bfc" id="L666" title="All 2 branches covered.">        for (Long managerId : managerIds) {</span>
+            try {
+<span class="fc" id="L668">                Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L669">                payload.put(&quot;userId&quot;, managerId);</span>
+<span class="fc" id="L670">                payload.put(&quot;claimId&quot;, claim.getId());</span>
+<span class="fc" id="L671">                payload.put(&quot;title&quot;, &quot;Manager Review Requested&quot;);</span>
+<span class="fc" id="L672">                payload.put(</span>
+<span class="fc" id="L673">                        &quot;message&quot;,</span>
+<span class="pc bpc" id="L674" title="1 of 2 branches missed.">                        detail == null</span>
+<span class="nc" id="L675">                                ? String.format(&quot;Adjuster %s requested manager review for claim %s.&quot;, requestedBy, claim.getClaimNumber())</span>
+<span class="fc" id="L676">                                : String.format(</span>
+<span class="fc" id="L677">                                        &quot;Adjuster %s requested manager review for claim %s. Note: %s&quot;,</span>
+<span class="fc" id="L678">                                        requestedBy,</span>
+<span class="fc" id="L679">                                        claim.getClaimNumber(),</span>
+<span class="fc" id="L680">                                        detail</span>
+                                )
+                );
+<span class="fc" id="L683">                payload.put(&quot;type&quot;, &quot;SYSTEM_MESSAGE&quot;);</span>
+<span class="fc" id="L684">                payload.put(&quot;actionUrl&quot;, &quot;/claims&quot;);</span>
+<span class="fc" id="L685">                payload.put(&quot;senderId&quot;, null);</span>
+<span class="fc" id="L686">                notificationServiceClient.sendNotification(payload);</span>
+<span class="pc" id="L687">            } catch (Exception e) {</span>
+<span class="nc" id="L688">                log.error(&quot;Failed to send manager review notification for claim {}&quot;, claim.getId(), e);</span>
+            }
+        }
+<span class="fc" id="L691">    }</span>
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private List&lt;Long&gt; getActiveManagerIds() {
+        try {
+<span class="fc" id="L696">            Map&lt;String, Object&gt; envelope = authServiceClient.getManagers();</span>
+<span class="pc bpc" id="L697" title="1 of 2 branches missed.">            if (envelope == null) {</span>
+<span class="nc" id="L698">                return List.of();</span>
+            }
+<span class="fc" id="L700">            Object dataObject = envelope.get(&quot;data&quot;);</span>
+<span class="pc bpc" id="L701" title="1 of 2 branches missed.">            if (!(dataObject instanceof List&lt;?&gt; managerRows)) {</span>
+<span class="nc" id="L702">                return List.of();</span>
+            }
+<span class="fc" id="L704">            return managerRows.stream()</span>
+<span class="fc" id="L705">                    .filter(Map.class::isInstance)</span>
+<span class="fc" id="L706">                    .map(Map.class::cast)</span>
+<span class="fc" id="L707">                    .filter(row -&gt; &quot;ACTIVE&quot;.equalsIgnoreCase(String.valueOf(row.get(&quot;status&quot;))))</span>
+<span class="fc" id="L708">                    .map(row -&gt; parseLong(row.get(&quot;id&quot;)))</span>
+<span class="pc bpc" id="L709" title="2 of 4 branches missed.">                    .filter(id -&gt; id != null &amp;&amp; id &gt; 0)</span>
+<span class="fc" id="L710">                    .distinct()</span>
+<span class="fc" id="L711">                    .toList();</span>
+<span class="nc" id="L712">        } catch (Exception ex) {</span>
+<span class="nc" id="L713">            log.warn(&quot;Failed to fetch managers for review notification: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L714">            return List.of();</span>
+        }
+    }
+
+    private void applyApprovedAmount(Claim claim, Claim.ClaimStatus newStatus, BigDecimal requestedApprovedAmount) {
+<span class="pc bpc" id="L719" title="1 of 2 branches missed.">        if (requestedApprovedAmount != null) {</span>
+<span class="nc" id="L720">            claim.setApprovedAmount(requestedApprovedAmount);</span>
+<span class="nc" id="L721">            return;</span>
+        }
+
+<span class="pc bpc" id="L724" title="1 of 4 branches missed.">        if ((newStatus == Claim.ClaimStatus.APPROVED || newStatus == Claim.ClaimStatus.PAID)</span>
+<span class="pc bpc" id="L725" title="1 of 2 branches missed.">                &amp;&amp; claim.getApprovedAmount() == null</span>
+<span class="pc bpc" id="L726" title="1 of 2 branches missed.">                &amp;&amp; claim.getClaimAmount() != null) {</span>
+<span class="fc" id="L727">            claim.setApprovedAmount(claim.getClaimAmount());</span>
+        }
+<span class="fc" id="L729">    }</span>
+
+    private void validateStatusTransition(Claim.ClaimStatus currentStatus, Claim.ClaimStatus newStatus) {
+<span class="fc" id="L732">        Set&lt;Claim.ClaimStatus&gt; validTransitions = allowedTransitions.getOrDefault(currentStatus, EnumSet.noneOf(Claim.ClaimStatus.class));</span>
+<span class="pc bpc" id="L733" title="1 of 2 branches missed.">        if (!validTransitions.contains(newStatus)) {</span>
+<span class="nc" id="L734">            throw new IllegalArgumentException(&quot;Invalid claim status transition from &quot; + currentStatus + &quot; to &quot; + newStatus);</span>
+        }
+<span class="fc" id="L736">    }</span>
+
+    private void validateRoleBasedStatusUpdate(Claim.ClaimStatus newStatus) {
+<span class="fc" id="L739">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L740" title="All 2 branches covered.">        if (authentication == null) {</span>
+<span class="fc" id="L741">            return;</span>
+        }
+<span class="fc" id="L743">        Set&lt;String&gt; roles = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L744">                .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L745">                .collect(Collectors.toSet());</span>
+<span class="pc bpc" id="L746" title="1 of 2 branches missed.">        boolean isAdjusterOnly = roles.contains(&quot;ROLE_ADJUSTER&quot;)</span>
+<span class="pc bpc" id="L747" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_MANAGER&quot;)</span>
+<span class="pc bpc" id="L748" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADMIN&quot;);</span>
+<span class="pc bpc" id="L749" title="1 of 2 branches missed.">        if (!isAdjusterOnly) {</span>
+<span class="nc" id="L750">            return;</span>
+        }
+<span class="pc bpc" id="L752" title="1 of 4 branches missed.">        if (newStatus == Claim.ClaimStatus.PAID || newStatus == Claim.ClaimStatus.PAYMENT_FAILED) {</span>
+<span class="fc" id="L753">            throw new IllegalArgumentException(&quot;Adjuster is not allowed to set status to &quot; + newStatus + &quot;.&quot;);</span>
+        }
+<span class="fc" id="L755">    }</span>
+
+    private void assertCanAccessClaim(Claim claim, Long requesterUserId) {
+<span class="fc bfc" id="L758" title="All 2 branches covered.">        if (isPolicyholderOnly()) {</span>
+<span class="pc bpc" id="L759" title="1 of 4 branches missed.">            if (requesterUserId == null || !claim.getClaimantId().equals(requesterUserId)) {</span>
+<span class="fc" id="L760">                throw new AccessDeniedException(&quot;You are not allowed to access this claim.&quot;);</span>
+            }
+<span class="fc" id="L762">            return;</span>
+        }
+
+<span class="fc bfc" id="L765" title="All 2 branches covered.">        if (isAdjusterOnly()) {</span>
+<span class="pc bpc" id="L766" title="2 of 6 branches missed.">            if (requesterUserId == null || claim.getAdjusterId() == null || !claim.getAdjusterId().equals(requesterUserId)) {</span>
+<span class="fc" id="L767">                throw new AccessDeniedException(&quot;Adjuster can access only assigned claims.&quot;);</span>
+            }
+        }
+<span class="fc" id="L770">    }</span>
+
+    private void assertCanUpdateClaim(Claim claim, Long requesterUserId) {
+<span class="fc bfc" id="L773" title="All 2 branches covered.">        if (isAdjusterOnly()) {</span>
+<span class="pc bpc" id="L774" title="2 of 6 branches missed.">            if (requesterUserId == null || claim.getAdjusterId() == null || !claim.getAdjusterId().equals(requesterUserId)) {</span>
+<span class="fc" id="L775">                throw new AccessDeniedException(&quot;Adjuster can update only assigned claims.&quot;);</span>
+            }
+        }
+<span class="fc" id="L778">    }</span>
+
+    private boolean isAdjusterOnly() {
+<span class="fc" id="L781">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L782" title="All 2 branches covered.">        if (authentication == null) {</span>
+<span class="fc" id="L783">            return false;</span>
+        }
+<span class="fc" id="L785">        Set&lt;String&gt; roles = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L786">                .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L787">                .collect(Collectors.toSet());</span>
+<span class="fc bfc" id="L788" title="All 2 branches covered.">        return roles.contains(&quot;ROLE_ADJUSTER&quot;)</span>
+<span class="pc bpc" id="L789" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_MANAGER&quot;)</span>
+<span class="pc bpc" id="L790" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADMIN&quot;);</span>
+    }
+
+    private boolean isPolicyholderOnly() {
+<span class="fc" id="L794">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L795" title="All 2 branches covered.">        if (authentication == null) {</span>
+<span class="fc" id="L796">            return false;</span>
+        }
+<span class="fc" id="L798">        Set&lt;String&gt; roles = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L799">                .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L800">                .collect(Collectors.toSet());</span>
+<span class="fc bfc" id="L801" title="All 2 branches covered.">        return roles.contains(&quot;ROLE_POLICYHOLDER&quot;)</span>
+<span class="pc bpc" id="L802" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADJUSTER&quot;)</span>
+<span class="pc bpc" id="L803" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_MANAGER&quot;)</span>
+<span class="pc bpc" id="L804" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADMIN&quot;);</span>
+    }
+
+    private Map&lt;Claim.ClaimStatus, Set&lt;Claim.ClaimStatus&gt;&gt; buildAllowedTransitions() {
+<span class="fc" id="L808">        Map&lt;Claim.ClaimStatus, Set&lt;Claim.ClaimStatus&gt;&gt; transitions = new EnumMap&lt;&gt;(Claim.ClaimStatus.class);</span>
+<span class="fc" id="L809">        transitions.put(Claim.ClaimStatus.SUBMITTED, EnumSet.of(Claim.ClaimStatus.UNDER_REVIEW, Claim.ClaimStatus.CANCELLED));</span>
+<span class="fc" id="L810">        transitions.put(Claim.ClaimStatus.UNDER_REVIEW, EnumSet.of(Claim.ClaimStatus.APPROVED, Claim.ClaimStatus.REJECTED, Claim.ClaimStatus.ADJUSTED, Claim.ClaimStatus.CANCELLED));</span>
+<span class="fc" id="L811">        transitions.put(Claim.ClaimStatus.ADJUSTED, EnumSet.of(Claim.ClaimStatus.APPROVED, Claim.ClaimStatus.REJECTED, Claim.ClaimStatus.CANCELLED));</span>
+<span class="fc" id="L812">        transitions.put(Claim.ClaimStatus.APPROVED, EnumSet.of(Claim.ClaimStatus.PAID, Claim.ClaimStatus.PAYMENT_FAILED));</span>
+<span class="fc" id="L813">        transitions.put(Claim.ClaimStatus.PAYMENT_FAILED, EnumSet.of(Claim.ClaimStatus.PAID, Claim.ClaimStatus.CANCELLED));</span>
+<span class="fc" id="L814">        transitions.put(Claim.ClaimStatus.REJECTED, EnumSet.noneOf(Claim.ClaimStatus.class));</span>
+<span class="fc" id="L815">        transitions.put(Claim.ClaimStatus.PAID, EnumSet.noneOf(Claim.ClaimStatus.class));</span>
+<span class="fc" id="L816">        transitions.put(Claim.ClaimStatus.CANCELLED, EnumSet.noneOf(Claim.ClaimStatus.class));</span>
+<span class="fc" id="L817">        return transitions;</span>
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private void applyClaimantSnapshot(Claim claim, String fallbackUsername) {
+<span class="fc" id="L822">        String claimantName = fallbackUsername;</span>
+<span class="fc" id="L823">        String claimantPhone = null;</span>
+        try {
+<span class="fc" id="L825">            Map&lt;String, Object&gt; envelope = authServiceClient.getCurrentUser();</span>
+<span class="pc bpc" id="L826" title="1 of 2 branches missed.">            if (envelope != null) {</span>
+<span class="fc" id="L827">                Object dataObject = envelope.get(&quot;data&quot;);</span>
+<span class="pc bpc" id="L828" title="1 of 2 branches missed.">                if (dataObject instanceof Map&lt;?, ?&gt; dataMap) {</span>
+<span class="fc" id="L829">                    String firstName = toTrimmedString(dataMap.get(&quot;firstName&quot;));</span>
+<span class="fc" id="L830">                    String lastName = toTrimmedString(dataMap.get(&quot;lastName&quot;));</span>
+<span class="fc" id="L831">                    String fullName = (firstName + &quot; &quot; + lastName).trim();</span>
+<span class="pc bpc" id="L832" title="1 of 2 branches missed.">                    if (!fullName.isBlank()) {</span>
+<span class="fc" id="L833">                        claimantName = fullName;</span>
+                    }
+<span class="fc" id="L835">                    claimantPhone = toTrimmedString(dataMap.get(&quot;phoneNumber&quot;));</span>
+                }
+            }
+<span class="fc" id="L838">        } catch (Exception ex) {</span>
+<span class="fc" id="L839">            log.warn(&quot;Failed to fetch claimant profile snapshot: {}&quot;, ex.getMessage());</span>
+        }
+<span class="fc" id="L841">        claim.setClaimantName(claimantName);</span>
+<span class="fc" id="L842">        claim.setClaimantPhone(claimantPhone);</span>
+<span class="fc" id="L843">    }</span>
+
+    private String toTrimmedString(Object value) {
+<span class="pc bpc" id="L846" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L847">            return null;</span>
+        }
+<span class="fc" id="L849">        String resolved = String.valueOf(value).trim();</span>
+<span class="fc bfc" id="L850" title="All 2 branches covered.">        return resolved.isBlank() ? null : resolved;</span>
+    }
+
+    private Long parseLong(Object value) {
+<span class="pc bpc" id="L854" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L855">            return null;</span>
+        }
+<span class="pc bpc" id="L857" title="1 of 2 branches missed.">        if (value instanceof Number number) {</span>
+<span class="fc" id="L858">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L861">            return Long.parseLong(String.valueOf(value));</span>
+<span class="nc" id="L862">        } catch (NumberFormatException ex) {</span>
+<span class="nc" id="L863">            return null;</span>
+        }
+    }
+
+    private String normalizeQuery(String query) {
+<span class="fc bfc" id="L868" title="All 2 branches covered.">        if (query == null) {</span>
+<span class="fc" id="L869">            return null;</span>
+        }
+<span class="fc" id="L871">        String trimmed = query.trim().toLowerCase();</span>
+<span class="pc bpc" id="L872" title="1 of 2 branches missed.">        return trimmed.isBlank() ? null : trimmed;</span>
+    }
+
+    private java.time.LocalDate parseDate(String dateValue) {
+<span class="pc bpc" id="L876" title="2 of 4 branches missed.">        if (dateValue == null || dateValue.isBlank()) {</span>
+<span class="nc" id="L877">            return null;</span>
+        }
+        try {
+<span class="fc" id="L880">            return java.time.LocalDate.parse(dateValue.trim());</span>
+<span class="fc" id="L881">        } catch (Exception ex) {</span>
+<span class="fc" id="L882">            throw new IllegalArgumentException(&quot;Invalid date format. Use YYYY-MM-DD.&quot;);</span>
+        }
+    }
+
+    private boolean hasSettlementBankDetails(Claim claim) {
+<span class="fc bfc" id="L887" title="All 2 branches covered.">        return toTrimmedString(claim.getBeneficiaryName()) != null</span>
+<span class="pc bpc" id="L888" title="1 of 2 branches missed.">                &amp;&amp; toTrimmedString(claim.getBankAccountNumber()) != null</span>
+<span class="pc bpc" id="L889" title="1 of 2 branches missed.">                &amp;&amp; toTrimmedString(claim.getIfscCode()) != null</span>
+<span class="pc bpc" id="L890" title="1 of 2 branches missed.">                &amp;&amp; toTrimmedString(claim.getBankName()) != null;</span>
+    }
+
+    private ClaimBankDetailsResponse toBankDetailsResponse(Claim claim) {
+<span class="fc" id="L894">        return ClaimBankDetailsResponse.builder()</span>
+<span class="fc" id="L895">                .claimId(claim.getId())</span>
+<span class="fc" id="L896">                .beneficiaryName(claim.getBeneficiaryName())</span>
+<span class="fc" id="L897">                .accountNumber(claim.getBankAccountNumber())</span>
+<span class="fc" id="L898">                .ifscCode(claim.getIfscCode())</span>
+<span class="fc" id="L899">                .bankName(claim.getBankName())</span>
+<span class="fc" id="L900">                .updatedAt(claim.getBankDetailsUpdatedAt())</span>
+<span class="fc" id="L901">                .build();</span>
+    }
+
+    private ClaimAuditEventResponse toAuditResponse(ClaimAuditEvent event) {
+<span class="fc" id="L905">        return ClaimAuditEventResponse.builder()</span>
+<span class="fc" id="L906">                .id(event.getId())</span>
+<span class="fc" id="L907">                .claimId(event.getClaimId())</span>
+<span class="fc" id="L908">                .claimNumber(event.getClaimNumber())</span>
+<span class="fc" id="L909">                .actionType(event.getActionType())</span>
+<span class="fc" id="L910">                .oldStatus(event.getOldStatus())</span>
+<span class="fc" id="L911">                .newStatus(event.getNewStatus())</span>
+<span class="fc" id="L912">                .assignedAdjusterId(event.getAssignedAdjusterId())</span>
+<span class="fc" id="L913">                .approvedAmount(event.getApprovedAmount())</span>
+<span class="fc" id="L914">                .details(event.getDetails())</span>
+<span class="fc" id="L915">                .changedBy(event.getChangedBy())</span>
+<span class="fc" id="L916">                .createdAt(event.getCreatedAt())</span>
+<span class="fc" id="L917">                .build();</span>
+    }
+
+    private void recordAuditEvent(
+            Claim claim,
+            ClaimAuditEvent.AuditAction actionType,
+            Claim.ClaimStatus oldStatus,
+            Claim.ClaimStatus newStatus,
+            String changedBy,
+            String details,
+            Long assignedAdjusterId,
+            BigDecimal approvedAmount
+    ) {
+<span class="fc" id="L930">        ClaimAuditEvent event = ClaimAuditEvent.builder()</span>
+<span class="fc" id="L931">                .claimId(claim.getId())</span>
+<span class="fc" id="L932">                .claimNumber(claim.getClaimNumber())</span>
+<span class="fc" id="L933">                .actionType(actionType)</span>
+<span class="fc" id="L934">                .oldStatus(oldStatus)</span>
+<span class="fc" id="L935">                .newStatus(newStatus)</span>
+<span class="fc" id="L936">                .assignedAdjusterId(assignedAdjusterId)</span>
+<span class="fc" id="L937">                .approvedAmount(approvedAmount)</span>
+<span class="fc" id="L938">                .details(details)</span>
+<span class="fc" id="L939">                .changedBy(changedBy)</span>
+<span class="fc" id="L940">                .build();</span>
+<span class="fc" id="L941">        claimAuditEventRepository.save(event);</span>
+<span class="fc" id="L942">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

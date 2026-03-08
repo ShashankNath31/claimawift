@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtTokenProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Auth Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.authservice.security</a> &gt; <span class="el_source">JwtTokenProvider.java</span></div><h1>JwtTokenProvider.java</h1><pre class="source lang-java linenums">package com.claimswift.authservice.security;
+
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+<span class="fc" id="L15">@Slf4j</span>
+@Component
+<span class="nc" id="L17">public class JwtTokenProvider {</span>
+
+    @Value(&quot;${jwt.secret}&quot;)
+    private String jwtSecret;
+
+    @Value(&quot;${jwt.expiration:86400000}&quot;)
+    private long jwtExpirationInMs;
+<span class="nc" id="L24">    private final Set&lt;String&gt; invalidatedTokens = ConcurrentHashMap.newKeySet();</span>
+
+    private SecretKey getSigningKey() {
+<span class="nc" id="L27">        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));</span>
+    }
+
+    public String generateToken(Long userId, String username, Set&lt;String&gt; roles) {
+<span class="nc" id="L31">        Date now = new Date();</span>
+<span class="nc" id="L32">        Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);</span>
+<span class="nc" id="L33">        String primaryRole = roles.stream().findFirst().orElse(&quot;&quot;);</span>
+
+<span class="nc" id="L35">        return Jwts.builder()</span>
+<span class="nc" id="L36">                .subject(String.valueOf(userId))</span>
+<span class="nc" id="L37">                .claim(&quot;userId&quot;, userId)</span>
+<span class="nc" id="L38">                .claim(&quot;username&quot;, username)</span>
+<span class="nc" id="L39">                .claim(&quot;roles&quot;, roles)</span>
+<span class="nc" id="L40">                .claim(&quot;role&quot;, primaryRole)</span>
+<span class="nc" id="L41">                .issuedAt(now)</span>
+<span class="nc" id="L42">                .expiration(expiryDate)</span>
+<span class="nc" id="L43">                .signWith(getSigningKey())</span>
+<span class="nc" id="L44">                .compact();</span>
+    }
+
+    public boolean validateToken(String token) {
+<span class="nc bnc" id="L48" title="All 4 branches missed.">        if (token == null || invalidatedTokens.contains(token)) {</span>
+<span class="nc" id="L49">            return false;</span>
+        }
+        try {
+<span class="nc" id="L52">            Jwts.parser()</span>
+<span class="nc" id="L53">                    .verifyWith(getSigningKey())</span>
+<span class="nc" id="L54">                    .build()</span>
+<span class="nc" id="L55">                    .parseSignedClaims(token);</span>
+<span class="nc" id="L56">            return true;</span>
+<span class="nc" id="L57">        } catch (Exception ex) {</span>
+<span class="nc" id="L58">            log.error(&quot;JWT validation failed: {}&quot;, ex.getMessage());</span>
+        }
+<span class="nc" id="L60">        return false;</span>
+    }
+
+    public String getUsernameFromToken(String token) {
+<span class="nc" id="L64">        Claims claims = Jwts.parser()</span>
+<span class="nc" id="L65">                .verifyWith(getSigningKey())</span>
+<span class="nc" id="L66">                .build()</span>
+<span class="nc" id="L67">                .parseSignedClaims(token)</span>
+<span class="nc" id="L68">                .getPayload();</span>
+<span class="nc" id="L69">        return claims.get(&quot;username&quot;, String.class);</span>
+    }
+
+    public Long getUserIdFromToken(String token) {
+<span class="nc" id="L73">        Claims claims = Jwts.parser()</span>
+<span class="nc" id="L74">                .verifyWith(getSigningKey())</span>
+<span class="nc" id="L75">                .build()</span>
+<span class="nc" id="L76">                .parseSignedClaims(token)</span>
+<span class="nc" id="L77">                .getPayload();</span>
+<span class="nc" id="L78">        Object userId = claims.get(&quot;userId&quot;);</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (userId instanceof Number number) {</span>
+<span class="nc" id="L80">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L83">            return Long.parseLong(claims.getSubject());</span>
+<span class="nc" id="L84">        } catch (Exception ex) {</span>
+<span class="nc" id="L85">            return null;</span>
+        }
+    }
+
+    public long getExpirationTime() {
+<span class="nc" id="L90">        return jwtExpirationInMs;</span>
+    }
+
+    public void invalidateToken(String token) {
+<span class="nc bnc" id="L94" title="All 4 branches missed.">        if (token != null &amp;&amp; !token.isBlank()) {</span>
+<span class="nc" id="L95">            invalidatedTokens.add(token);</span>
+<span class="nc" id="L96">            log.debug(&quot;Token invalidated for logout&quot;);</span>
+        }
+<span class="nc" id="L98">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

@@ -1,0 +1,17 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Document Service,com.claimswift.documentservice.service,DocumentService,112,613,28,46,22,144,32,33,4,24
+Document Service,com.claimswift.documentservice,DocumentServiceApplication,8,0,0,0,3,0,2,0,2,0
+Document Service,com.claimswift.documentservice.exception,InvalidFileException,0,4,0,0,0,2,0,1,0,1
+Document Service,com.claimswift.documentservice.exception,GlobalExceptionHandler,251,0,6,0,52,0,18,0,15,0
+Document Service,com.claimswift.documentservice.exception,UnsupportedDocumentTypeException,0,4,0,0,0,2,0,1,0,1
+Document Service,com.claimswift.documentservice.exception,DocumentNotFoundException,4,0,0,0,2,0,1,0,1,0
+Document Service,com.claimswift.documentservice.util,StandardResponse,108,0,8,0,29,0,13,0,9,0
+Document Service,com.claimswift.documentservice.filter,CorrelationIdFilter,40,0,4,0,11,0,5,0,3,0
+Document Service,com.claimswift.documentservice.filter,CorrelationIdFilter.new HttpServletRequestWrapper() {...},48,0,4,0,10,0,6,0,4,0
+Document Service,com.claimswift.documentservice.controller,DocumentController,162,0,0,0,34,0,9,0,9,0
+Document Service,com.claimswift.documentservice.entity,Document.DocumentType,0,104,0,0,0,11,0,1,0,1
+Document Service,com.claimswift.documentservice.config,FeignConfig,70,0,14,0,15,0,10,0,3,0
+Document Service,com.claimswift.documentservice.security,JwtTokenProvider,144,0,12,0,37,0,16,0,10,0
+Document Service,com.claimswift.documentservice.security,SecurityConfig,111,0,0,0,21,0,6,0,6,0
+Document Service,com.claimswift.documentservice.security,JwtAuthenticationFilter,105,0,8,0,24,0,7,0,3,0
+Document Service,com.claimswift.documentservice.mapper,DocumentMapper,125,0,8,0,34,0,8,0,4,0

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Notification.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Notification Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.notificationservice.entity</a> &gt; <span class="el_source">Notification.java</span></div><h1>Notification.java</h1><pre class="source lang-java linenums">package com.claimswift.notificationservice.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = &quot;notifications&quot;)
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Notification {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;user_id&quot;, nullable = false)
+    private Long userId;
+
+    @Column(name = &quot;claim_id&quot;)
+    private Long claimId;
+
+    @Column(name = &quot;title&quot;, nullable = false, length = 200)
+    private String title;
+
+    @Column(name = &quot;message&quot;, nullable = false, length = 1000)
+    private String message;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;type&quot;, nullable = false, length = 50)
+    private NotificationType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;status&quot;, nullable = false, length = 20)
+    private NotificationStatus status;
+
+    @Column(name = &quot;is_read&quot;, nullable = false)
+    @Builder.Default
+    private Boolean isRead = false;
+
+    @Column(name = &quot;read_at&quot;)
+    private LocalDateTime readAt;
+
+    @Column(name = &quot;action_url&quot;, length = 500)
+    private String actionUrl;
+
+    @Column(name = &quot;sender_id&quot;)
+    private Long senderId;
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;)
+    private LocalDateTime updatedAt;
+
+<span class="fc" id="L66">    public enum NotificationType {</span>
+<span class="fc" id="L67">        CLAIM_STATUS_UPDATE,</span>
+<span class="fc" id="L68">        CLAIM_APPROVED,</span>
+<span class="fc" id="L69">        CLAIM_REJECTED,</span>
+<span class="fc" id="L70">        PAYMENT_PROCESSED,</span>
+<span class="fc" id="L71">        DOCUMENT_UPLOADED,</span>
+<span class="fc" id="L72">        ASSESSMENT_COMPLETED,</span>
+<span class="fc" id="L73">        SYSTEM_MESSAGE,</span>
+<span class="fc" id="L74">        REMINDER</span>
+    }
+
+<span class="fc" id="L77">    public enum NotificationStatus {</span>
+<span class="fc" id="L78">        PENDING,</span>
+<span class="fc" id="L79">        SENT,</span>
+<span class="fc" id="L80">        DELIVERED,</span>
+<span class="fc" id="L81">        READ</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

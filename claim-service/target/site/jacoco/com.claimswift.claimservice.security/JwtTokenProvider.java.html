@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtTokenProvider.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Claim Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.claimservice.security</a> &gt; <span class="el_source">JwtTokenProvider.java</span></div><h1>JwtTokenProvider.java</h1><pre class="source lang-java linenums">package com.claimswift.claimservice.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Date;
+import java.util.function.Function;
+
+@Component
+<span class="nc" id="L20">public class JwtTokenProvider {</span>
+
+    @Value(&quot;${jwt.secret}&quot;)
+    private String jwtSecret;
+
+    public String extractUsername(String token) {
+<span class="nc" id="L26">        Claims claims = extractAllClaims(token);</span>
+<span class="nc" id="L27">        String username = claims.get(&quot;username&quot;, String.class);</span>
+<span class="nc bnc" id="L28" title="All 2 branches missed.">        return username != null ? username : claims.getSubject();</span>
+    }
+
+    public Long extractUserId(String token) {
+<span class="nc" id="L32">        Claims claims = extractAllClaims(token);</span>
+<span class="nc" id="L33">        Object userId = claims.get(&quot;userId&quot;);</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">        if (userId instanceof Number number) {</span>
+<span class="nc" id="L35">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L38">            return Long.parseLong(claims.getSubject());</span>
+<span class="nc" id="L39">        } catch (Exception ex) {</span>
+<span class="nc" id="L40">            return null;</span>
+        }
+    }
+
+    public Collection&lt;? extends GrantedAuthority&gt; extractAuthorities(String token) {
+<span class="nc" id="L45">        Claims claims = extractAllClaims(token);</span>
+<span class="nc" id="L46">        List&lt;SimpleGrantedAuthority&gt; authorities = new ArrayList&lt;&gt;();</span>
+
+        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="nc" id="L49">        List&lt;String&gt; roles = claims.get(&quot;roles&quot;, List.class);</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">        if (roles != null) {</span>
+<span class="nc" id="L51">            roles.stream()</span>
+<span class="nc" id="L52">                    .map(SimpleGrantedAuthority::new)</span>
+<span class="nc" id="L53">                    .forEach(authorities::add);</span>
+<span class="nc" id="L54">        } else {</span>
+<span class="nc" id="L55">            String role = claims.get(&quot;role&quot;, String.class);</span>
+<span class="nc bnc" id="L56" title="All 4 branches missed.">            if (role != null &amp;&amp; !role.isBlank()) {</span>
+<span class="nc" id="L57">                authorities.add(new SimpleGrantedAuthority(role));</span>
+            }
+        }
+<span class="nc" id="L60">        return authorities;</span>
+    }
+
+    public &lt;T&gt; T extractClaim(String token, Function&lt;Claims, T&gt; claimsResolver) {
+<span class="nc" id="L64">        final Claims claims = extractAllClaims(token);</span>
+<span class="nc" id="L65">        return claimsResolver.apply(claims);</span>
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">            return !isTokenExpired(token);</span>
+<span class="nc" id="L71">        } catch (Exception e) {</span>
+<span class="nc" id="L72">            return false;</span>
+        }
+    }
+
+    private boolean isTokenExpired(String token) {
+<span class="nc" id="L77">        return extractExpiration(token).before(new Date());</span>
+    }
+
+    private Date extractExpiration(String token) {
+<span class="nc" id="L81">        return extractClaim(token, Claims::getExpiration);</span>
+    }
+
+    private Claims extractAllClaims(String token) {
+<span class="nc" id="L85">        return Jwts.parser()</span>
+<span class="nc" id="L86">                .verifyWith(getSigningKey())</span>
+<span class="nc" id="L87">                .build()</span>
+<span class="nc" id="L88">                .parseSignedClaims(token)</span>
+<span class="nc" id="L89">                .getPayload();</span>
+    }
+
+    private SecretKey getSigningKey() {
+<span class="nc" id="L93">        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);</span>
+<span class="nc" id="L94">        return Keys.hmacShaKeyFor(keyBytes);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

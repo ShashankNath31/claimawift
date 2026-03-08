@@ -16,65 +16,65 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = &quot;assessments&quot;)
-<span class="nc bnc" id="L19" title="All 134 branches missed.">@Data</span>
-<span class="nc" id="L20">@Builder</span>
-<span class="fc" id="L21">@NoArgsConstructor</span>
-<span class="nc" id="L22">@AllArgsConstructor</span>
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Assessment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-<span class="nc" id="L27">    private Long id;</span>
+    private Long id;
 
     @Column(name = &quot;claim_id&quot;, nullable = false, unique = true)
-<span class="nc" id="L30">    private Long claimId;</span>
+    private Long claimId;
 
     @Column(name = &quot;assessor_id&quot;, nullable = false)
-<span class="nc" id="L33">    private Long assessorId;</span>
+    private Long assessorId;
 
     @Column(name = &quot;risk_score&quot;, precision = 5, scale = 2)
-<span class="nc" id="L36">    private BigDecimal riskScore;</span>
+    private BigDecimal riskScore;
 
     @Enumerated(EnumType.STRING)
     @Column(name = &quot;risk_level&quot;, length = 20)
-<span class="nc" id="L40">    private RiskLevel riskLevel;</span>
+    private RiskLevel riskLevel;
 
     @Enumerated(EnumType.STRING)
     @Column(name = &quot;decision&quot;, length = 20)
-<span class="nc" id="L44">    private AssessmentDecision decision;</span>
+    private AssessmentDecision decision;
 
     @Column(name = &quot;assessed_amount&quot;, precision = 15, scale = 2)
-<span class="nc" id="L47">    private BigDecimal assessedAmount;</span>
+    private BigDecimal assessedAmount;
 
     @Column(name = &quot;recommended_amount&quot;, precision = 15, scale = 2)
-<span class="nc" id="L50">    private BigDecimal recommendedAmount;</span>
+    private BigDecimal recommendedAmount;
 
     @Column(name = &quot;justification&quot;, length = 2000)
-<span class="nc" id="L53">    private String justification;</span>
+    private String justification;
 
     @Column(name = &quot;notes&quot;, length = 2000)
-<span class="nc" id="L56">    private String notes;</span>
+    private String notes;
 
     @Enumerated(EnumType.STRING)
     @Column(name = &quot;validation_status&quot;, length = 30)
-<span class="nc" id="L60">    private ValidationStatus validationStatus;</span>
+    private ValidationStatus validationStatus;
 
     @Column(name = &quot;rule_violations&quot;, length = 1000)
-<span class="nc" id="L63">    private String ruleViolations;</span>
+    private String ruleViolations;
 
     @CreationTimestamp
     @Column(name = &quot;created_at&quot;, updatable = false)
-<span class="nc" id="L67">    private LocalDateTime createdAt;</span>
+    private LocalDateTime createdAt;
 
     @UpdateTimestamp
     @Column(name = &quot;updated_at&quot;)
-<span class="nc" id="L71">    private LocalDateTime updatedAt;</span>
+    private LocalDateTime updatedAt;
 
     @Column(name = &quot;created_by&quot;)
-<span class="nc" id="L74">    private String createdBy;</span>
+    private String createdBy;
 
     @Column(name = &quot;updated_by&quot;)
-<span class="nc" id="L77">    private String updatedBy;</span>
+    private String updatedBy;
 
 <span class="fc" id="L79">    public enum RiskLevel {</span>
 <span class="fc" id="L80">        LOW, MEDIUM, HIGH, CRITICAL</span>

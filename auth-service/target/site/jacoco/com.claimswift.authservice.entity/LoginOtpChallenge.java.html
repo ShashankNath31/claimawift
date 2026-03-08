@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LoginOtpChallenge.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Auth Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.authservice.entity</a> &gt; <span class="el_source">LoginOtpChallenge.java</span></div><h1>LoginOtpChallenge.java</h1><pre class="source lang-java linenums">package com.claimswift.authservice.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(
+        name = &quot;login_otp_challenges&quot;,
+        indexes = {
+                @Index(name = &quot;idx_login_otp_challenge_id&quot;, columnList = &quot;challenge_id&quot;, unique = true),
+                @Index(name = &quot;idx_login_otp_user_id&quot;, columnList = &quot;user_id&quot;),
+                @Index(name = &quot;idx_login_otp_expires_at&quot;, columnList = &quot;expires_at&quot;)
+        }
+)
+@Getter
+<span class="pc" id="L20">@Setter</span>
+<span class="nc" id="L21">@NoArgsConstructor</span>
+<span class="fc" id="L22">@AllArgsConstructor</span>
+<span class="pc" id="L23">@Builder</span>
+public class LoginOtpChallenge {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+<span class="nc" id="L28">    private Long id;</span>
+
+    @Column(name = &quot;challenge_id&quot;, nullable = false, unique = true, length = 64)
+<span class="fc" id="L31">    private String challengeId;</span>
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = &quot;user_id&quot;, nullable = false)
+<span class="fc" id="L35">    private User user;</span>
+
+    @Column(name = &quot;otp_hash&quot;, nullable = false, length = 255)
+<span class="fc" id="L38">    private String otpHash;</span>
+
+    @Column(name = &quot;expires_at&quot;, nullable = false)
+<span class="fc" id="L41">    private LocalDateTime expiresAt;</span>
+
+    @Column(name = &quot;attempt_count&quot;, nullable = false)
+<span class="fc" id="L44">    private Integer attemptCount;</span>
+
+    @Column(name = &quot;consumed&quot;, nullable = false)
+<span class="fc" id="L47">    private Boolean consumed;</span>
+
+    @Column(name = &quot;verified_at&quot;)
+<span class="nc" id="L50">    private LocalDateTime verifiedAt;</span>
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+<span class="nc" id="L54">    private LocalDateTime createdAt;</span>
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+<span class="nc" id="L58">    private LocalDateTime updatedAt;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

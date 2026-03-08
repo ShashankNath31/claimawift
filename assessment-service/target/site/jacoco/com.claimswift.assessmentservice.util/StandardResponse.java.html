@@ -6,15 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.slf4j.MDC;
 
-<span class="nc bnc" id="L9" title="All 38 branches missed.">@Data</span>
-<span class="nc" id="L10">@Builder</span>
-<span class="nc" id="L11">@NoArgsConstructor</span>
-<span class="nc" id="L12">@AllArgsConstructor</span>
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class StandardResponse&lt;T&gt; {
-<span class="nc" id="L14">    private String code;</span>
-<span class="nc" id="L15">    private String message;</span>
-<span class="nc" id="L16">    private T data;</span>
-<span class="nc" id="L17">    private String requestId;</span>
+    private String code;
+    private String message;
+    private T data;
+    private String requestId;
 
     public static &lt;T&gt; StandardResponse&lt;T&gt; success(T data) {
 <span class="nc" id="L20">        return StandardResponse.&lt;T&gt;builder()</span>

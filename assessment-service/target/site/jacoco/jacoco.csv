@@ -1,26 +1,16 @@
 GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
-Assessment Service,com.claimswift.assessmentservice.util,StandardResponse.StandardResponseBuilder,46,0,0,0,1,0,7,0,7,0
-Assessment Service,com.claimswift.assessmentservice.util,StandardResponse,298,0,50,0,40,0,52,0,24,0
+Assessment Service,com.claimswift.assessmentservice.util,StandardResponse,83,0,12,0,32,0,18,0,9,0
 Assessment Service,com.claimswift.assessmentservice.controller,AssessmentController,97,10,0,0,21,4,10,2,10,2
 Assessment Service,com.claimswift.assessmentservice.filter,CorrelationIdFilter.new HttpServletRequestWrapper() {...},3,45,1,3,1,9,1,5,0,4
-Assessment Service,com.claimswift.assessmentservice.filter,CorrelationIdFilter,3,36,3,1,0,10,2,3,0,3
-Assessment Service,com.claimswift.assessmentservice.security,JwtAuthenticationFilter,70,32,6,2,14,10,4,4,0,4
-Assessment Service,com.claimswift.assessmentservice.security,JwtTokenProvider,144,3,14,0,35,1,16,1,9,1
-Assessment Service,com.claimswift.assessmentservice.security,SecurityConfig,0,115,0,0,0,20,0,7,0,7
-Assessment Service,com.claimswift.assessmentservice.dto,AssessmentRequest,196,0,38,0,5,0,32,0,13,0
-Assessment Service,com.claimswift.assessmentservice.dto,AssessmentResponse,644,0,126,0,16,0,98,0,35,0
-Assessment Service,com.claimswift.assessmentservice.dto,AdjustmentResponse,521,0,102,0,13,0,80,0,29,0
-Assessment Service,com.claimswift.assessmentservice.dto,AdjustmentRequest,277,0,54,0,7,0,44,0,17,0
-Assessment Service,com.claimswift.assessmentservice.dto,DecisionRequest,197,0,38,0,5,0,32,0,13,0
-Assessment Service,com.claimswift.assessmentservice.entity,Adjustment.AdjustmentType,0,63,0,0,0,11,0,1,0,1
-Assessment Service,com.claimswift.assessmentservice.entity,Assessment.AssessmentDecision,0,27,0,0,0,2,0,1,0,1
-Assessment Service,com.claimswift.assessmentservice.entity,Assessment,735,3,134,0,19,1,105,1,38,1
-Assessment Service,com.claimswift.assessmentservice.entity,Adjustment,647,3,118,0,17,1,93,1,34,1
-Assessment Service,com.claimswift.assessmentservice.entity,Assessment.ValidationStatus,0,27,0,0,0,2,0,1,0,1
-Assessment Service,com.claimswift.assessmentservice.entity,Assessment.AssessmentBuilder,161,0,0,0,1,0,19,0,19,0
-Assessment Service,com.claimswift.assessmentservice.entity,Assessment.RiskLevel,0,27,0,0,0,2,0,1,0,1
-Assessment Service,com.claimswift.assessmentservice.entity,Adjustment.AdjustmentBuilder,141,0,0,0,1,0,17,0,17,0
-Assessment Service,com.claimswift.assessmentservice.service,AssessmentService,744,22,58,0,190,2,53,2,23,2
+Assessment Service,com.claimswift.assessmentservice.filter,CorrelationIdFilter,3,37,3,1,0,11,2,3,0,3
+Assessment Service,com.claimswift.assessmentservice.security,JwtAuthenticationFilter,71,25,6,2,14,8,4,3,0,3
+Assessment Service,com.claimswift.assessmentservice.security,JwtTokenProvider,144,3,14,0,36,1,16,1,9,1
+Assessment Service,com.claimswift.assessmentservice.security,SecurityConfig,0,111,0,0,0,21,0,6,0,6
+Assessment Service,com.claimswift.assessmentservice.entity,Adjustment.AdjustmentType,0,104,0,0,0,11,0,1,0,1
+Assessment Service,com.claimswift.assessmentservice.entity,Assessment.AssessmentDecision,0,44,0,0,0,2,0,1,0,1
+Assessment Service,com.claimswift.assessmentservice.entity,Assessment.ValidationStatus,0,44,0,0,0,2,0,1,0,1
+Assessment Service,com.claimswift.assessmentservice.entity,Assessment.RiskLevel,0,44,0,0,0,2,0,1,0,1
+Assessment Service,com.claimswift.assessmentservice.service,AssessmentService,100,653,22,36,23,165,22,32,3,21
 Assessment Service,com.claimswift.assessmentservice.config,FeignConfig,65,7,14,0,13,3,8,3,1,3
-Assessment Service,com.claimswift.assessmentservice.exception,GlobalExceptionHandler,212,7,6,0,39,2,12,2,9,2
+Assessment Service,com.claimswift.assessmentservice.exception,GlobalExceptionHandler,212,7,6,0,38,2,12,2,9,2
 Assessment Service,com.claimswift.assessmentservice,AssessmentServiceApplication,5,3,0,0,2,1,1,1,1,1

@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PaymentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Payment Service - Simulated Payment Gateway (Sandbox)</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.paymentservice.service</a> &gt; <span class="el_source">PaymentService.java</span></div><h1>PaymentService.java</h1><pre class="source lang-java linenums">package com.claimswift.paymentservice.service;
+
+import com.claimswift.paymentservice.client.ClaimServiceClient;
+import com.claimswift.paymentservice.client.NotificationServiceClient;
+import com.claimswift.paymentservice.dto.AutoPaymentRequest;
+import com.claimswift.paymentservice.dto.PaymentRequest;
+import com.claimswift.paymentservice.dto.PaymentResponse;
+import com.claimswift.paymentservice.entity.PaymentTransaction;
+import com.claimswift.paymentservice.repository.PaymentTransactionRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L29">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class PaymentService {
+
+    private final PaymentTransactionRepository paymentRepository;
+    private final ClaimServiceClient claimServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
+
+    @Transactional
+    public PaymentResponse processPayment(PaymentRequest request, Long processedBy, String username) {
+<span class="fc" id="L40">        log.info(&quot;Processing simulated payment for claim {}: Amount {}&quot;,</span>
+<span class="fc" id="L41">            request.getClaimId(), request.getAmount());</span>
+<span class="fc" id="L42">        validateClaimEligibilityForSettlement(request);</span>
+
+<span class="fc" id="L44">        PaymentTransaction existingApproved = paymentRepository</span>
+<span class="fc" id="L45">                .findFirstByClaimIdAndStatus(request.getClaimId(), PaymentTransaction.PaymentStatus.APPROVED)</span>
+<span class="fc" id="L46">                .orElse(null);</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (existingApproved != null) {</span>
+<span class="fc" id="L48">            log.info(&quot;Skipping duplicate payment processing for claim {}. Existing transaction: {}&quot;,</span>
+<span class="fc" id="L49">                    request.getClaimId(), existingApproved.getTransactionId());</span>
+<span class="fc" id="L50">            return mapToResponse(existingApproved, &quot;Payment already processed for this claim&quot;);</span>
+        }
+
+<span class="fc" id="L53">        String transactionId = generateTransactionId();</span>
+
+<span class="fc" id="L55">        PaymentTransaction transaction = PaymentTransaction.builder()</span>
+<span class="fc" id="L56">                .transactionId(transactionId)</span>
+<span class="fc" id="L57">                .claimId(request.getClaimId())</span>
+<span class="fc" id="L58">                .policyholderId(request.getPolicyholderId())</span>
+<span class="fc" id="L59">                .amount(request.getAmount())</span>
+<span class="fc" id="L60">                .status(PaymentTransaction.PaymentStatus.INITIATED)</span>
+<span class="fc" id="L61">                .paymentMethod(request.getPaymentMethod())</span>
+<span class="fc" id="L62">                .beneficiaryName(request.getBeneficiaryName())</span>
+<span class="fc" id="L63">                .accountNumber(maskAccountNumber(request.getAccountNumber()))</span>
+<span class="fc" id="L64">                .ifscCode(request.getIfscCode())</span>
+<span class="fc" id="L65">                .bankName(request.getBankName())</span>
+<span class="fc" id="L66">                .simulationMode(true)</span>
+<span class="fc" id="L67">                .processedBy(processedBy)</span>
+<span class="fc" id="L68">                .createdBy(username)</span>
+<span class="fc" id="L69">                .updatedBy(username)</span>
+<span class="fc" id="L70">                .build();</span>
+
+<span class="fc" id="L72">        transaction = paymentRepository.save(transaction);</span>
+
+<span class="fc" id="L74">        PaymentSimulationResult result = simulatePaymentProcessing(request);</span>
+
+<span class="fc" id="L76">        transaction.setStatus(result.getStatus());</span>
+<span class="fc" id="L77">        transaction.setSimulationResult(result.getResult());</span>
+<span class="fc" id="L78">        transaction.setReferenceNumber(result.getReferenceNumber());</span>
+
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        if (result.getStatus() == PaymentTransaction.PaymentStatus.REJECTED ||</span>
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">            result.getStatus() == PaymentTransaction.PaymentStatus.FAILED) {</span>
+<span class="fc" id="L82">            transaction.setFailureReason(result.getFailureReason());</span>
+        }
+
+<span class="fc" id="L85">        transaction.setUpdatedBy(username);</span>
+<span class="fc" id="L86">        transaction = paymentRepository.save(transaction);</span>
+
+<span class="fc" id="L88">        updateClaimPaymentStatus(request.getClaimId(), request.getAmount(), result.getStatus());</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        if (result.getStatus() == PaymentTransaction.PaymentStatus.APPROVED) {</span>
+<span class="fc" id="L90">            notifyPaymentProcessed(request, transaction);</span>
+        }
+
+<span class="fc" id="L93">        log.info(&quot;Simulated payment completed for claim {}: Status {} - {}&quot;,</span>
+<span class="fc" id="L94">            request.getClaimId(), result.getStatus(), result.getResult());</span>
+
+<span class="fc" id="L96">        return mapToResponse(transaction, result.getMessage());</span>
+    }
+
+    @Transactional
+    public PaymentResponse processWorkflowPayment(AutoPaymentRequest request, Long processedBy, String username) {
+<span class="fc" id="L101">        PaymentRequest paymentRequest = new PaymentRequest();</span>
+<span class="fc" id="L102">        paymentRequest.setClaimId(request.getClaimId());</span>
+<span class="fc" id="L103">        paymentRequest.setClaimNumber(request.getClaimNumber());</span>
+<span class="fc" id="L104">        paymentRequest.setPolicyholderId(request.getPolicyholderId());</span>
+<span class="fc" id="L105">        paymentRequest.setAmount(request.getAmount());</span>
+<span class="fc" id="L106">        paymentRequest.setPaymentMethod(PaymentTransaction.PaymentMethod.BANK_TRANSFER);</span>
+<span class="fc" id="L107">        paymentRequest.setBeneficiaryName(&quot;Policyholder-&quot; + request.getPolicyholderId());</span>
+<span class="fc" id="L108">        paymentRequest.setAccountNumber(buildSyntheticAccountNumber(request.getPolicyholderId()));</span>
+<span class="fc" id="L109">        paymentRequest.setIfscCode(&quot;CLSW0000123&quot;);</span>
+<span class="fc" id="L110">        paymentRequest.setBankName(&quot;ClaimSwift Test Bank&quot;);</span>
+<span class="pc bpc" id="L111" title="2 of 4 branches missed.">        paymentRequest.setForceSimulateSuccess(request.getForceSuccess() == null || request.getForceSuccess());</span>
+<span class="fc" id="L112">        paymentRequest.setForceSimulateFailure(false);</span>
+
+<span class="fc" id="L114">        return processPayment(paymentRequest, processedBy, username);</span>
+    }
+
+    private PaymentSimulationResult simulatePaymentProcessing(PaymentRequest request) {
+<span class="fc" id="L118">        PaymentSimulationResult result = new PaymentSimulationResult();</span>
+
+<span class="fc bfc" id="L120" title="All 2 branches covered.">        if (Boolean.TRUE.equals(request.getForceSimulateSuccess())) {</span>
+<span class="fc" id="L121">            result.setStatus(PaymentTransaction.PaymentStatus.APPROVED);</span>
+<span class="fc" id="L122">            result.setResult(&quot;SIMULATED_SUCCESS&quot;);</span>
+<span class="fc" id="L123">            result.setReferenceNumber(generateReferenceNumber());</span>
+<span class="fc" id="L124">            result.setMessage(&quot;Payment simulated successfully (forced success)&quot;);</span>
+<span class="fc" id="L125">            return result;</span>
+        }
+
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">        if (Boolean.TRUE.equals(request.getForceSimulateFailure())) {</span>
+<span class="fc" id="L129">            result.setStatus(PaymentTransaction.PaymentStatus.REJECTED);</span>
+<span class="fc" id="L130">            result.setResult(&quot;SIMULATED_FAILURE&quot;);</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">            result.setFailureReason(request.getSimulateFailureReason() != null ?</span>
+<span class="pc" id="L132">                request.getSimulateFailureReason() : &quot;Simulated failure&quot;);</span>
+<span class="fc" id="L133">            result.setMessage(&quot;Payment simulated failure (forced failure)&quot;);</span>
+<span class="fc" id="L134">            return result;</span>
+        }
+
+<span class="nc" id="L137">        BigDecimal amount = request.getAmount();</span>
+        double successProbability;
+
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (amount.compareTo(new BigDecimal(&quot;10000&quot;)) &lt; 0) {</span>
+<span class="nc" id="L141">            successProbability = 0.90;</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        } else if (amount.compareTo(new BigDecimal(&quot;50000&quot;)) &lt; 0) {</span>
+<span class="nc" id="L143">            successProbability = 0.80;</span>
+<span class="nc" id="L144">        } else {</span>
+<span class="nc" id="L145">            successProbability = 0.70;</span>
+        }
+
+<span class="nc" id="L148">        double random = Math.random();</span>
+
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (random &lt; successProbability) {</span>
+<span class="nc" id="L151">            result.setStatus(PaymentTransaction.PaymentStatus.APPROVED);</span>
+<span class="nc" id="L152">            result.setResult(&quot;SIMULATED_SUCCESS&quot;);</span>
+<span class="nc" id="L153">            result.setReferenceNumber(generateReferenceNumber());</span>
+<span class="nc" id="L154">            result.setMessage(&quot;Payment processed successfully (simulated)&quot;);</span>
+<span class="nc" id="L155">        } else {</span>
+<span class="nc" id="L156">            result.setStatus(PaymentTransaction.PaymentStatus.REJECTED);</span>
+<span class="nc" id="L157">            result.setResult(&quot;SIMULATED_FAILURE&quot;);</span>
+<span class="nc" id="L158">            result.setFailureReason(getRandomFailureReason());</span>
+<span class="nc" id="L159">            result.setMessage(&quot;Payment failed: &quot; + result.getFailureReason());</span>
+        }
+
+<span class="nc" id="L162">        return result;</span>
+    }
+
+    private String getRandomFailureReason() {
+<span class="fc" id="L166">        String[] failureReasons = {</span>
+<span class="fc" id="L167">            &quot;Insufficient funds in source account&quot;,</span>
+<span class="fc" id="L168">            &quot;Bank server timeout&quot;,</span>
+<span class="fc" id="L169">            &quot;Invalid account details&quot;,</span>
+<span class="fc" id="L170">            &quot;Daily transaction limit exceeded&quot;,</span>
+<span class="fc" id="L171">            &quot;Bank maintenance window&quot;,</span>
+<span class="fc" id="L172">            &quot;NEFT/RTGS service unavailable&quot;,</span>
+<span class="fc" id="L173">            &quot;Account frozen or blocked&quot;,</span>
+<span class="fc" id="L174">            &quot;IFSC code validation failed&quot;</span>
+        };
+<span class="fc" id="L176">        int index = (int) (Math.random() * failureReasons.length);</span>
+<span class="fc" id="L177">        return failureReasons[index];</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse getPayment(Long id) {
+<span class="fc" id="L182">        return getPayment(id, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentResponse getPayment(Long id, Long requesterUserId) {
+<span class="fc" id="L187">        PaymentTransaction transaction = paymentRepository.findById(id)</span>
+<span class="pc" id="L188">                .orElseThrow(() -&gt; new RuntimeException(&quot;Payment not found: &quot; + id));</span>
+<span class="fc" id="L189">        assertPolicyholderCanReadPayment(transaction, requesterUserId);</span>
+<span class="fc" id="L190">        return mapToResponse(transaction, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;PaymentResponse&gt; getPaymentsByClaim(Long claimId) {
+<span class="fc" id="L195">        return getPaymentsByClaim(claimId, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;PaymentResponse&gt; getPaymentsByClaim(Long claimId, Long requesterUserId) {
+<span class="fc" id="L200">        List&lt;PaymentTransaction&gt; transactions = paymentRepository.findByClaimId(claimId);</span>
+<span class="fc" id="L201">        assertPolicyholderCanReadPayments(claimId, transactions, requesterUserId);</span>
+<span class="fc" id="L202">        return transactions.stream()</span>
+<span class="fc" id="L203">                .map(t -&gt; mapToResponse(t, null))</span>
+<span class="fc" id="L204">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;PaymentResponse&gt; getAllPayments() {
+<span class="fc" id="L209">        return paymentRepository.findAll().stream()</span>
+<span class="fc" id="L210">                .map(t -&gt; mapToResponse(t, null))</span>
+<span class="fc" id="L211">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;PaymentResponse&gt; getPaymentsByStatus(PaymentTransaction.PaymentStatus status) {
+<span class="fc" id="L216">        return paymentRepository.findByStatus(status).stream()</span>
+<span class="fc" id="L217">                .map(t -&gt; mapToResponse(t, null))</span>
+<span class="fc" id="L218">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Map&lt;String, Object&gt; getPaymentSummary(String startDate, String endDate) {
+<span class="fc" id="L223">        List&lt;PaymentTransaction&gt; transactions = paymentRepository.findAll();</span>
+<span class="fc" id="L224">        BigDecimal totalAmount = transactions.stream()</span>
+<span class="fc" id="L225">                .map(PaymentTransaction::getAmount)</span>
+<span class="fc" id="L226">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L227">        long total = transactions.size();</span>
+<span class="fc bfc" id="L228" title="All 2 branches covered.">        long approved = transactions.stream().filter(t -&gt; t.getStatus() == PaymentTransaction.PaymentStatus.APPROVED).count();</span>
+<span class="fc bfc" id="L229" title="All 2 branches covered.">        long rejected = transactions.stream().filter(t -&gt; t.getStatus() == PaymentTransaction.PaymentStatus.REJECTED).count();</span>
+<span class="pc bpc" id="L230" title="1 of 2 branches missed.">        long failed = transactions.stream().filter(t -&gt; t.getStatus() == PaymentTransaction.PaymentStatus.FAILED).count();</span>
+<span class="fc" id="L231">        long pending = transactions.stream().filter(t -&gt;</span>
+<span class="fc bfc" id="L232" title="All 2 branches covered.">                t.getStatus() == PaymentTransaction.PaymentStatus.PROCESSING ||</span>
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">                t.getStatus() == PaymentTransaction.PaymentStatus.PENDING_VERIFICATION ||</span>
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">                t.getStatus() == PaymentTransaction.PaymentStatus.INITIATED).count();</span>
+
+<span class="fc" id="L236">        Map&lt;String, Object&gt; summary = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L237">        summary.put(&quot;startDate&quot;, startDate);</span>
+<span class="fc" id="L238">        summary.put(&quot;endDate&quot;, endDate);</span>
+<span class="fc" id="L239">        summary.put(&quot;generatedAt&quot;, LocalDateTime.now());</span>
+<span class="fc" id="L240">        summary.put(&quot;totalPayments&quot;, total);</span>
+<span class="fc" id="L241">        summary.put(&quot;approvedPayments&quot;, approved);</span>
+<span class="fc" id="L242">        summary.put(&quot;rejectedPayments&quot;, rejected);</span>
+<span class="fc" id="L243">        summary.put(&quot;failedPayments&quot;, failed);</span>
+<span class="fc" id="L244">        summary.put(&quot;pendingPayments&quot;, pending);</span>
+<span class="fc" id="L245">        summary.put(&quot;totalAmount&quot;, totalAmount);</span>
+<span class="fc" id="L246">        return summary;</span>
+    }
+
+    private void updateClaimPaymentStatus(Long claimId, BigDecimal amount, PaymentTransaction.PaymentStatus status) {
+        try {
+<span class="fc" id="L251">            Map&lt;String, Object&gt; statusUpdate = new HashMap&lt;&gt;();</span>
+
+<span class="fc bfc" id="L253" title="All 2 branches covered.">            if (status == PaymentTransaction.PaymentStatus.APPROVED) {</span>
+<span class="fc" id="L254">                statusUpdate.put(&quot;status&quot;, &quot;PAID&quot;);</span>
+<span class="fc" id="L255">                statusUpdate.put(&quot;approvedAmount&quot;, amount);</span>
+<span class="fc" id="L256">                statusUpdate.put(&quot;notes&quot;, &quot;Marked PAID by payment-service transaction&quot;);</span>
+<span class="pc bpc" id="L257" title="1 of 2 branches missed.">            } else if (status == PaymentTransaction.PaymentStatus.REJECTED ||</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">                       status == PaymentTransaction.PaymentStatus.FAILED) {</span>
+<span class="fc" id="L259">                statusUpdate.put(&quot;status&quot;, &quot;PAYMENT_FAILED&quot;);</span>
+<span class="fc" id="L260">                statusUpdate.put(&quot;notes&quot;, &quot;Payment failed/rejected in payment-service&quot;);</span>
+<span class="fc" id="L261">            } else {</span>
+<span class="nc" id="L262">                return;</span>
+            }
+
+<span class="fc" id="L265">            claimServiceClient.updateClaimStatus(claimId, statusUpdate);</span>
+<span class="fc" id="L266">            log.info(&quot;Claim {} status updated to {}&quot;, claimId, statusUpdate.get(&quot;status&quot;));</span>
+<span class="pc" id="L267">        } catch (Exception e) {</span>
+<span class="nc" id="L268">            log.error(&quot;Failed to update claim status for claim {}&quot;, claimId, e);</span>
+        }
+<span class="fc" id="L270">    }</span>
+
+    private void validateClaimEligibilityForSettlement(PaymentRequest request) {
+<span class="fc" id="L273">        Map&lt;String, Object&gt; claimSnapshot = claimServiceClient.getClaimByIdForWorkflow(request.getClaimId());</span>
+<span class="fc" id="L274">        String status = String.valueOf(claimSnapshot.get(&quot;status&quot;));</span>
+<span class="fc bfc" id="L275" title="All 2 branches covered.">        if (!&quot;APPROVED&quot;.equalsIgnoreCase(status)) {</span>
+<span class="fc" id="L276">            throw new IllegalArgumentException(&quot;Settlement is allowed only for APPROVED claims.&quot;);</span>
+        }
+
+<span class="fc" id="L279">        BigDecimal approvedAmount = parseAmount(claimSnapshot.get(&quot;approvedAmount&quot;));</span>
+<span class="fc bfc" id="L280" title="All 2 branches covered.">        if (approvedAmount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="fc" id="L281">            throw new IllegalArgumentException(&quot;Approved amount is required before settlement.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L284" title="All 2 branches covered.">        if (request.getAmount().compareTo(approvedAmount) &gt; 0) {</span>
+<span class="fc" id="L285">            throw new IllegalArgumentException(&quot;Settlement amount cannot exceed approved amount: &quot; + approvedAmount);</span>
+        }
+
+<span class="fc" id="L288">        Long claimPolicyholderId = parseLong(claimSnapshot.get(&quot;policyholderId&quot;));</span>
+<span class="pc bpc" id="L289" title="1 of 4 branches missed.">        if (claimPolicyholderId != null &amp;&amp; !claimPolicyholderId.equals(request.getPolicyholderId())) {</span>
+<span class="fc" id="L290">            throw new IllegalArgumentException(&quot;Policyholder ID does not match claim owner.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L293" title="1 of 4 branches missed.">        if (request.getClaimNumber() == null || request.getClaimNumber().isBlank()) {</span>
+<span class="fc" id="L294">            Object claimNumber = claimSnapshot.get(&quot;claimNumber&quot;);</span>
+<span class="pc bpc" id="L295" title="1 of 2 branches missed.">            if (claimNumber != null) {</span>
+<span class="fc" id="L296">                request.setClaimNumber(String.valueOf(claimNumber));</span>
+            }
+        }
+<span class="fc" id="L299">    }</span>
+
+    private void notifyPaymentProcessed(PaymentRequest request, PaymentTransaction transaction) {
+        try {
+<span class="fc" id="L303">            Map&lt;String, Object&gt; payload = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L304">            payload.put(&quot;userId&quot;, request.getPolicyholderId());</span>
+<span class="fc" id="L305">            payload.put(&quot;claimId&quot;, request.getClaimId());</span>
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">            payload.put(&quot;claimNumber&quot;, request.getClaimNumber() != null ? request.getClaimNumber() : request.getClaimId());</span>
+<span class="fc" id="L307">            payload.put(&quot;amount&quot;, transaction.getAmount());</span>
+<span class="fc" id="L308">            notificationServiceClient.sendPaymentProcessedNotification(payload);</span>
+<span class="pc" id="L309">        } catch (Exception e) {</span>
+<span class="nc" id="L310">            log.error(&quot;Failed to notify payment completion for claim {}&quot;, request.getClaimId(), e);</span>
+        }
+<span class="fc" id="L312">    }</span>
+
+    private String buildSyntheticAccountNumber(Long policyholderId) {
+<span class="pc bpc" id="L315" title="1 of 2 branches missed.">        long safeId = policyholderId == null ? 0L : policyholderId;</span>
+<span class="fc" id="L316">        return String.format(&quot;000000000000%04d&quot;, safeId % 10000);</span>
+    }
+
+    private String generateTransactionId() {
+<span class="fc" id="L320">        return &quot;TXN&quot; + UUID.randomUUID().toString().replace(&quot;-&quot;, &quot;&quot;).substring(0, 16).toUpperCase();</span>
+    }
+
+    private String generateReferenceNumber() {
+<span class="fc" id="L324">        return &quot;REF&quot; + System.currentTimeMillis() + (int)(Math.random() * 1000);</span>
+    }
+
+    private BigDecimal parseAmount(Object value) {
+<span class="fc bfc" id="L328" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L329">            return BigDecimal.ZERO;</span>
+        }
+<span class="fc bfc" id="L331" title="All 2 branches covered.">        if (value instanceof BigDecimal decimal) {</span>
+<span class="fc" id="L332">            return decimal;</span>
+        }
+<span class="fc" id="L334">        return new BigDecimal(String.valueOf(value));</span>
+    }
+
+    private Long parseLong(Object value) {
+<span class="pc bpc" id="L338" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L339">            return null;</span>
+        }
+<span class="fc bfc" id="L341" title="All 2 branches covered.">        if (value instanceof Number number) {</span>
+<span class="fc" id="L342">            return number.longValue();</span>
+        }
+        try {
+<span class="fc" id="L345">            return Long.parseLong(String.valueOf(value));</span>
+<span class="fc" id="L346">        } catch (NumberFormatException ex) {</span>
+<span class="fc" id="L347">            return null;</span>
+        }
+    }
+
+    private String maskAccountNumber(String accountNumber) {
+<span class="pc bpc" id="L352" title="1 of 4 branches missed.">        if (accountNumber == null || accountNumber.length() &lt; 4) {</span>
+<span class="fc" id="L353">            return accountNumber;</span>
+        }
+<span class="fc" id="L355">        return &quot;****&quot; + accountNumber.substring(accountNumber.length() - 4);</span>
+    }
+
+    private void assertPolicyholderCanReadPayment(PaymentTransaction transaction, Long requesterUserId) {
+<span class="fc bfc" id="L359" title="All 2 branches covered.">        if (!isPolicyholderOnly()) {</span>
+<span class="fc" id="L360">            return;</span>
+        }
+<span class="pc bpc" id="L362" title="2 of 4 branches missed.">        if (requesterUserId == null || !requesterUserId.equals(transaction.getPolicyholderId())) {</span>
+<span class="fc" id="L363">            throw new AccessDeniedException(&quot;You are not allowed to access this payment.&quot;);</span>
+        }
+<span class="nc" id="L365">    }</span>
+
+    private void assertPolicyholderCanReadPayments(
+            Long claimId,
+            List&lt;PaymentTransaction&gt; transactions,
+            Long requesterUserId
+    ) {
+<span class="fc bfc" id="L372" title="All 2 branches covered.">        if (!isPolicyholderOnly()) {</span>
+<span class="fc" id="L373">            return;</span>
+        }
+<span class="pc bpc" id="L375" title="1 of 2 branches missed.">        if (requesterUserId == null) {</span>
+<span class="nc" id="L376">            throw new AccessDeniedException(&quot;You are not allowed to access payments for this claim.&quot;);</span>
+        }
+<span class="pc bpc" id="L378" title="1 of 4 branches missed.">        if (transactions.stream().anyMatch(txn -&gt; !requesterUserId.equals(txn.getPolicyholderId()))) {</span>
+<span class="fc" id="L379">            throw new AccessDeniedException(&quot;You are not allowed to access payments for this claim.&quot;);</span>
+        }
+<span class="pc bpc" id="L381" title="1 of 2 branches missed.">        if (!transactions.isEmpty()) {</span>
+<span class="nc" id="L382">            return;</span>
+        }
+
+<span class="fc" id="L385">        Map&lt;String, Object&gt; claimEnvelope = claimServiceClient.getClaimById(claimId);</span>
+<span class="fc" id="L386">        Object claimData = claimEnvelope.get(&quot;data&quot;);</span>
+<span class="pc bpc" id="L387" title="1 of 2 branches missed.">        if (!(claimData instanceof Map&lt;?, ?&gt; claimMap)) {</span>
+<span class="nc" id="L388">            throw new AccessDeniedException(&quot;Unable to validate claim ownership.&quot;);</span>
+        }
+<span class="fc" id="L390">        Long ownerId = parseLong(claimMap.get(&quot;policyholderId&quot;));</span>
+<span class="pc bpc" id="L391" title="1 of 4 branches missed.">        if (ownerId == null || !ownerId.equals(requesterUserId)) {</span>
+<span class="fc" id="L392">            throw new AccessDeniedException(&quot;You are not allowed to access payments for this claim.&quot;);</span>
+        }
+<span class="fc" id="L394">    }</span>
+
+    private boolean isPolicyholderOnly() {
+<span class="fc" id="L397">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L398" title="All 2 branches covered.">        if (authentication == null) {</span>
+<span class="fc" id="L399">            return false;</span>
+        }
+<span class="fc" id="L401">        Set&lt;String&gt; roles = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L402">                .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L403">                .collect(Collectors.toSet());</span>
+<span class="pc bpc" id="L404" title="1 of 2 branches missed.">        return roles.contains(&quot;ROLE_POLICYHOLDER&quot;)</span>
+<span class="pc bpc" id="L405" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADJUSTER&quot;)</span>
+<span class="pc bpc" id="L406" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_MANAGER&quot;)</span>
+<span class="pc bpc" id="L407" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADMIN&quot;);</span>
+    }
+
+    private PaymentResponse mapToResponse(PaymentTransaction transaction, String message) {
+<span class="fc" id="L411">        PaymentResponse response = new PaymentResponse();</span>
+<span class="fc" id="L412">        response.setId(transaction.getId());</span>
+<span class="fc" id="L413">        response.setTransactionId(transaction.getTransactionId());</span>
+<span class="fc" id="L414">        response.setClaimId(transaction.getClaimId());</span>
+<span class="fc" id="L415">        response.setPolicyholderId(transaction.getPolicyholderId());</span>
+<span class="fc" id="L416">        response.setAmount(transaction.getAmount());</span>
+<span class="fc" id="L417">        response.setStatus(transaction.getStatus());</span>
+<span class="fc" id="L418">        response.setPaymentMethod(transaction.getPaymentMethod());</span>
+<span class="fc" id="L419">        response.setBeneficiaryName(transaction.getBeneficiaryName());</span>
+<span class="fc" id="L420">        response.setReferenceNumber(transaction.getReferenceNumber());</span>
+<span class="fc" id="L421">        response.setSimulationMode(transaction.getSimulationMode());</span>
+<span class="fc" id="L422">        response.setSimulationResult(transaction.getSimulationResult());</span>
+<span class="fc" id="L423">        response.setFailureReason(transaction.getFailureReason());</span>
+<span class="fc" id="L424">        response.setCreatedAt(transaction.getCreatedAt());</span>
+<span class="fc" id="L425">        response.setUpdatedAt(transaction.getUpdatedAt());</span>
+<span class="fc" id="L426">        response.setMessage(message);</span>
+<span class="fc" id="L427">        return response;</span>
+    }
+
+    private static class PaymentSimulationResult {
+        private PaymentTransaction.PaymentStatus status;
+        private String result;
+        private String referenceNumber;
+        private String failureReason;
+        private String message;
+
+<span class="fc" id="L437">        public PaymentTransaction.PaymentStatus getStatus() { return status; }</span>
+<span class="fc" id="L438">        public void setStatus(PaymentTransaction.PaymentStatus status) { this.status = status; }</span>
+<span class="fc" id="L439">        public String getResult() { return result; }</span>
+<span class="fc" id="L440">        public void setResult(String result) { this.result = result; }</span>
+<span class="fc" id="L441">        public String getReferenceNumber() { return referenceNumber; }</span>
+<span class="fc" id="L442">        public void setReferenceNumber(String referenceNumber) { this.referenceNumber = referenceNumber; }</span>
+<span class="fc" id="L443">        public String getFailureReason() { return failureReason; }</span>
+<span class="fc" id="L444">        public void setFailureReason(String failureReason) { this.failureReason = failureReason; }</span>
+<span class="fc" id="L445">        public String getMessage() { return message; }</span>
+<span class="fc" id="L446">        public void setMessage(String message) { this.message = message; }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

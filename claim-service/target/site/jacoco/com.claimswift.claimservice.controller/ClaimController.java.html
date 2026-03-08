@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClaimController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Claim Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.claimservice.controller</a> &gt; <span class="el_source">ClaimController.java</span></div><h1>ClaimController.java</h1><pre class="source lang-java linenums">package com.claimswift.claimservice.controller;
+
+import com.claimswift.claimservice.dto.ClaimRequest;
+import com.claimswift.claimservice.dto.ClaimResponse;
+import com.claimswift.claimservice.dto.ClaimStatusUpdateRequest;
+import com.claimswift.claimservice.dto.ClaimAuditEventResponse;
+import com.claimswift.claimservice.dto.ClaimBankDetailsRequest;
+import com.claimswift.claimservice.dto.ClaimBankDetailsResponse;
+import com.claimswift.claimservice.dto.PolicyPortfolioResponse;
+import com.claimswift.claimservice.service.ClaimService;
+import com.claimswift.claimservice.util.StandardResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping(&quot;/api/claims&quot;)
+@Validated
+@RequiredArgsConstructor
+public class ClaimController {
+
+    private final ClaimService claimService;
+
+    @PostMapping
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; submitClaim(
+            @Valid @RequestBody ClaimRequest request,
+            @RequestAttribute(&quot;userId&quot;) Long claimantId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="fc" id="L45">        ClaimResponse response = claimService.submitClaim(request, claimantId, username);</span>
+<span class="fc" id="L46">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L47">                .body(StandardResponse.success(&quot;Claim submitted successfully&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; getClaimById(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="fc" id="L55">        ClaimResponse response = claimService.getClaimById(id, requesterUserId);</span>
+<span class="fc" id="L56">        return ResponseEntity.ok(StandardResponse.success(response));</span>
+    }
+
+    @GetMapping(&quot;/number/{claimNumber}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; getClaimByNumber(
+            @PathVariable(&quot;claimNumber&quot;) @NotBlank(message = &quot;Claim number is required&quot;) String claimNumber,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="fc" id="L64">        ClaimResponse response = claimService.getClaimByNumber(claimNumber, requesterUserId);</span>
+<span class="fc" id="L65">        return ResponseEntity.ok(StandardResponse.success(response));</span>
+    }
+
+    @GetMapping(&quot;/my-claims&quot;)
+    @PreAuthorize(&quot;hasRole('POLICYHOLDER')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; getMyClaims(
+            @RequestAttribute(&quot;userId&quot;) Long claimantId) {
+<span class="fc" id="L72">        List&lt;ClaimResponse&gt; responses = claimService.getClaimsByClaimant(claimantId);</span>
+<span class="fc" id="L73">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping(&quot;/history&quot;)
+    @PreAuthorize(&quot;hasRole('POLICYHOLDER')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; getClaimHistory(
+            @RequestAttribute(&quot;userId&quot;) Long claimantId) {
+<span class="fc" id="L80">        List&lt;ClaimResponse&gt; responses = claimService.getClaimHistory(claimantId);</span>
+<span class="fc" id="L81">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @PutMapping(&quot;/{id}/bank-details&quot;)
+    @PreAuthorize(&quot;hasRole('POLICYHOLDER') and !hasRole('ADJUSTER') and !hasRole('MANAGER') and !hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimBankDetailsResponse&gt;&gt; upsertClaimBankDetails(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @Valid @RequestBody ClaimBankDetailsRequest request,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L91">        ClaimBankDetailsResponse response = claimService.upsertClaimBankDetails(claimId, request, requesterUserId, username);</span>
+<span class="nc" id="L92">        return ResponseEntity.ok(StandardResponse.success(&quot;Bank details saved&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/{id}/bank-details&quot;)
+    @PreAuthorize(&quot;hasRole('MANAGER') or hasRole('ADMIN') or (hasRole('POLICYHOLDER') and !hasRole('ADJUSTER') and !hasRole('MANAGER') and !hasRole('ADMIN'))&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimBankDetailsResponse&gt;&gt; getClaimBankDetails(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="nc" id="L100">        ClaimBankDetailsResponse response = claimService.getClaimBankDetails(claimId, requesterUserId);</span>
+<span class="nc" id="L101">        return ResponseEntity.ok(StandardResponse.success(response));</span>
+    }
+
+    @GetMapping(&quot;/{id}/audit&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimAuditEventResponse&gt;&gt;&gt; getClaimAuditTrail(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+<span class="nc" id="L109">        List&lt;ClaimAuditEventResponse&gt; responses = claimService.getClaimAuditTrail(claimId, requesterUserId);</span>
+<span class="nc" id="L110">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping(&quot;/policies/my&quot;)
+    @PreAuthorize(&quot;hasRole('POLICYHOLDER')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;PolicyPortfolioResponse&gt;&gt; getMyPolicies(
+            @RequestAttribute(&quot;userId&quot;) Long claimantId) {
+<span class="nc" id="L117">        PolicyPortfolioResponse response = claimService.getMyPolicies(claimantId);</span>
+<span class="nc" id="L118">        return ResponseEntity.ok(StandardResponse.success(response));</span>
+    }
+
+    @GetMapping(&quot;/my-claims/search&quot;)
+    @PreAuthorize(&quot;hasRole('POLICYHOLDER')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; searchMyClaims(
+            @RequestAttribute(&quot;userId&quot;) Long claimantId,
+            @RequestParam(name = &quot;query&quot;, required = false) String query,
+            @RequestParam(name = &quot;status&quot;, required = false) String status,
+            @RequestParam(name = &quot;fromDate&quot;, required = false) String fromDate,
+            @RequestParam(name = &quot;toDate&quot;, required = false) String toDate) {
+<span class="nc" id="L129">        List&lt;ClaimResponse&gt; responses = claimService.searchMyClaims(claimantId, query, status, fromDate, toDate);</span>
+<span class="nc" id="L130">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Page&lt;ClaimResponse&gt;&gt;&gt; getClaims(
+            @RequestParam(name = &quot;page&quot;, defaultValue = &quot;0&quot;) @PositiveOrZero(message = &quot;page must be 0 or greater&quot;) int page,
+            @RequestParam(name = &quot;size&quot;, defaultValue = &quot;10&quot;) @Positive(message = &quot;size must be greater than 0&quot;) int size,
+            @RequestParam(name = &quot;status&quot;, required = false) String status,
+            @RequestParam(name = &quot;sortBy&quot;, defaultValue = &quot;createdAt&quot;) String sortBy,
+            @RequestParam(name = &quot;sortDir&quot;, defaultValue = &quot;desc&quot;) String sortDir) {
+<span class="nc" id="L141">        Page&lt;ClaimResponse&gt; response = claimService.getClaimsPage(page, size, status, sortBy, sortDir);</span>
+<span class="nc" id="L142">        return ResponseEntity.ok(StandardResponse.success(response));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; updateClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @Valid @RequestBody ClaimRequest request,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L151">        ClaimResponse response = claimService.updateClaim(id, request, username);</span>
+<span class="nc" id="L152">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim updated&quot;, response));</span>
+    }
+
+    @PutMapping(&quot;/{id}/status&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; updateClaimStatus(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @Valid @RequestBody ClaimStatusUpdateRequest request,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="fc" id="L162">        ClaimResponse response = claimService.updateClaimStatus(id, request, requesterUserId, username);</span>
+<span class="fc" id="L163">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim status updated&quot;, response));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/status&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; updateClaimStatusPatch(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @Valid @RequestBody ClaimStatusUpdateRequest request,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L173">        ClaimResponse response = claimService.updateClaimStatus(id, request, requesterUserId, username);</span>
+<span class="nc" id="L174">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim status updated&quot;, response));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/approve&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; approveClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @RequestBody(required = false) Map&lt;String, Object&gt; request,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L184">        ClaimStatusUpdateRequest statusRequest = ClaimStatusUpdateRequest.builder()</span>
+<span class="nc" id="L185">                .status(com.claimswift.claimservice.entity.Claim.ClaimStatus.APPROVED)</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">                .notes(toNullableString(request == null ? null : request.get(&quot;notes&quot;)))</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">                .approvedAmount(toNullableBigDecimal(request == null ? null : request.get(&quot;approvedAmount&quot;)))</span>
+<span class="nc" id="L188">                .build();</span>
+<span class="nc" id="L189">        ClaimResponse response = claimService.updateClaimStatus(id, statusRequest, requesterUserId, username);</span>
+<span class="nc" id="L190">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim approved&quot;, response));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/disapprove&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; disapproveClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @RequestBody(required = false) Map&lt;String, Object&gt; request,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L200">        ClaimStatusUpdateRequest statusRequest = ClaimStatusUpdateRequest.builder()</span>
+<span class="nc" id="L201">                .status(com.claimswift.claimservice.entity.Claim.ClaimStatus.REJECTED)</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">                .notes(toNullableString(request == null ? null : request.get(&quot;notes&quot;)))</span>
+<span class="nc" id="L203">                .build();</span>
+<span class="nc" id="L204">        ClaimResponse response = claimService.updateClaimStatus(id, statusRequest, requesterUserId, username);</span>
+<span class="nc" id="L205">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim disapproved&quot;, response));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/adjust&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; adjustClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id,
+            @RequestBody(required = false) Map&lt;String, Object&gt; request,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L215">        ClaimStatusUpdateRequest statusRequest = ClaimStatusUpdateRequest.builder()</span>
+<span class="nc" id="L216">                .status(com.claimswift.claimservice.entity.Claim.ClaimStatus.ADJUSTED)</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">                .notes(toNullableString(request == null ? null : request.get(&quot;notes&quot;)))</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">                .approvedAmount(toNullableBigDecimal(request == null ? null : request.get(&quot;approvedAmount&quot;)))</span>
+<span class="nc" id="L219">                .build();</span>
+<span class="nc" id="L220">        ClaimResponse response = claimService.updateClaimStatus(id, statusRequest, requesterUserId, username);</span>
+<span class="nc" id="L221">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim adjusted&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/status/{status}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; getClaimsByStatus(
+            @PathVariable(&quot;status&quot;) @NotBlank(message = &quot;Status is required&quot;) String status) {
+<span class="fc" id="L228">        List&lt;ClaimResponse&gt; responses = claimService.getClaimsByStatus(status);</span>
+<span class="fc" id="L229">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping(&quot;/pending&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; getPendingClaims() {
+<span class="nc" id="L235">        List&lt;ClaimResponse&gt; responses = claimService.getClaimsByStatus(&quot;UNDER_REVIEW&quot;);</span>
+<span class="nc" id="L236">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping(&quot;/assigned&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; getAssignedClaims(
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L243">        List&lt;ClaimResponse&gt; responses = claimService.getAssignedClaims(userId);</span>
+<span class="nc" id="L244">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/assign&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; assignClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestBody Map&lt;String, Long&gt; request,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L253">        Long adjusterId = request.get(&quot;adjusterId&quot;);</span>
+<span class="nc bnc" id="L254" title="All 4 branches missed.">        if (adjusterId == null || adjusterId &lt;= 0) {</span>
+<span class="nc" id="L255">            throw new IllegalArgumentException(&quot;adjusterId must be a positive number&quot;);</span>
+        }
+<span class="nc" id="L257">        ClaimResponse response = claimService.assignClaim(claimId, adjusterId, username);</span>
+<span class="nc" id="L258">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim assigned&quot;, response));</span>
+    }
+
+    @PatchMapping(&quot;/{id}/unassign&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimResponse&gt;&gt; unassignClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L266">        ClaimResponse response = claimService.unassignClaim(claimId, username);</span>
+<span class="nc" id="L267">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim unassigned&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/statistics&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Map&lt;String, Object&gt;&gt;&gt; getClaimStatistics() {
+<span class="nc" id="L273">        return ResponseEntity.ok(StandardResponse.success(claimService.getClaimStatistics()));</span>
+    }
+
+    @GetMapping(&quot;/search&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; searchClaims(
+            @RequestParam(&quot;query&quot;) @NotBlank(message = &quot;query is required&quot;) String query) {
+<span class="nc" id="L280">        List&lt;ClaimResponse&gt; responses = claimService.searchClaims(query);</span>
+<span class="nc" id="L281">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping(&quot;/adjuster/{adjusterId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;ClaimResponse&gt;&gt;&gt; getClaimsByAdjuster(
+            @PathVariable(&quot;adjusterId&quot;) @Positive(message = &quot;Adjuster ID must be positive&quot;) Long adjusterId) {
+<span class="nc" id="L288">        List&lt;ClaimResponse&gt; responses = claimService.getClaimsByAdjuster(adjusterId);</span>
+<span class="nc" id="L289">        return ResponseEntity.ok(StandardResponse.success(responses));</span>
+    }
+
+    @GetMapping(&quot;/summary&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Map&lt;String, Object&gt;&gt;&gt; getClaimsSummary(
+            @RequestParam(name = &quot;startDate&quot;, required = false) String startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) String endDate) {
+<span class="nc" id="L297">        return ResponseEntity.ok(StandardResponse.success(claimService.getClaimsSummary(startDate, endDate)));</span>
+    }
+
+    @GetMapping(&quot;/internal/all&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getClaimsForReporting() {
+<span class="nc" id="L303">        return ResponseEntity.ok(claimService.getAllClaims().stream().map(this::toMap).toList());</span>
+    }
+
+    @GetMapping(&quot;/internal/status/{status}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getClaimsByStatusForReporting(@PathVariable(&quot;status&quot;) String status) {
+<span class="nc" id="L309">        return ResponseEntity.ok(claimService.getClaimsByStatus(status).stream().map(this::toMap).toList());</span>
+    }
+
+    @GetMapping(&quot;/internal/adjuster/{adjusterId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getClaimsByAdjusterForReporting(
+            @PathVariable(&quot;adjusterId&quot;) @Positive(message = &quot;Adjuster ID must be positive&quot;) Long adjusterId) {
+<span class="nc" id="L316">        return ResponseEntity.ok(claimService.getClaimsByAdjuster(adjusterId).stream().map(this::toMap).toList());</span>
+    }
+
+    @GetMapping(&quot;/internal/summary&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; getClaimSummaryForReporting(
+            @RequestParam(name = &quot;startDate&quot;, required = false) String startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) String endDate) {
+<span class="nc" id="L324">        return ResponseEntity.ok(claimService.getClaimsSummary(startDate, endDate));</span>
+    }
+
+    @GetMapping(&quot;/internal/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; getClaimForInternalWorkflow(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id) {
+<span class="nc" id="L331">        return ResponseEntity.ok(toMap(claimService.getClaimById(id)));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; deleteClaim(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long id) {
+<span class="nc" id="L338">        claimService.deleteClaim(id);</span>
+<span class="nc" id="L339">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim deleted&quot;, null));</span>
+    }
+
+    @GetMapping(&quot;/health&quot;)
+    public ResponseEntity&lt;String&gt; health() {
+<span class="fc" id="L344">        return ResponseEntity.ok(&quot;Claim Service is running&quot;);</span>
+    }
+
+    private Map&lt;String, Object&gt; toMap(ClaimResponse response) {
+<span class="nc" id="L348">        Map&lt;String, Object&gt; data = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L349">        data.put(&quot;id&quot;, response.getId());</span>
+<span class="nc" id="L350">        data.put(&quot;claimNumber&quot;, response.getClaimNumber());</span>
+<span class="nc" id="L351">        data.put(&quot;policyNumber&quot;, response.getPolicyNumber());</span>
+<span class="nc" id="L352">        data.put(&quot;policyholderId&quot;, response.getPolicyholderId());</span>
+<span class="nc" id="L353">        data.put(&quot;adjusterName&quot;, response.getAdjusterName());</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">        data.put(&quot;status&quot;, response.getStatus() != null ? response.getStatus().name() : null);</span>
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        data.put(&quot;claimAmount&quot;, response.getClaimAmount() != null ? response.getClaimAmount() : BigDecimal.ZERO);</span>
+<span class="nc" id="L356">        data.put(&quot;approvedAmount&quot;, response.getApprovedAmount());</span>
+<span class="nc" id="L357">        data.put(&quot;adjusterId&quot;, response.getAssignedAdjusterId());</span>
+<span class="nc" id="L358">        data.put(&quot;incidentDate&quot;, response.getIncidentDate());</span>
+<span class="nc" id="L359">        data.put(&quot;createdAt&quot;, response.getCreatedAt());</span>
+<span class="nc" id="L360">        data.put(&quot;updatedAt&quot;, response.getUpdatedAt());</span>
+<span class="nc" id="L361">        data.put(&quot;submittedAt&quot;, response.getSubmittedAt());</span>
+<span class="nc" id="L362">        data.put(&quot;approvedAt&quot;, response.getApprovedAt());</span>
+<span class="nc" id="L363">        data.put(&quot;paidAt&quot;, response.getPaidAt());</span>
+<span class="nc" id="L364">        return data;</span>
+    }
+
+    private String toNullableString(Object value) {
+<span class="nc bnc" id="L368" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L369">            return null;</span>
+        }
+<span class="nc" id="L371">        String resolved = String.valueOf(value).trim();</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">        return resolved.isBlank() ? null : resolved;</span>
+    }
+
+    private BigDecimal toNullableBigDecimal(Object value) {
+<span class="nc bnc" id="L376" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L377">            return null;</span>
+        }
+        try {
+<span class="nc" id="L380">            return new BigDecimal(String.valueOf(value));</span>
+<span class="nc" id="L381">        } catch (NumberFormatException ex) {</span>
+<span class="nc" id="L382">            throw new IllegalArgumentException(&quot;approvedAmount must be a valid number&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

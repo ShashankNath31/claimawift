@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Notification Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.notificationservice.controller</a> &gt; <span class="el_source">NotificationController.java</span></div><h1>NotificationController.java</h1><pre class="source lang-java linenums">package com.claimswift.notificationservice.controller;
+
+import com.claimswift.notificationservice.dto.NotificationMessage;
+import com.claimswift.notificationservice.service.NotificationService;
+import com.claimswift.notificationservice.util.StandardResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Map;
+
+<span class="fc" id="L18">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/notifications&quot;)
+@Validated
+@RequiredArgsConstructor
+public class NotificationController {
+
+    private final NotificationService notificationService;
+
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;NotificationMessage&gt;&gt;&gt; getMyNotifications(
+            @RequestAttribute(&quot;userId&quot;) Long userId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L32">        log.info(&quot;Fetching notifications for user: {}&quot;, username);</span>
+        
+<span class="nc" id="L34">        List&lt;NotificationMessage&gt; notifications = notificationService.getUserNotifications(userId);</span>
+<span class="nc" id="L35">        return ResponseEntity.ok(StandardResponse.success(&quot;Notifications retrieved&quot;, notifications));</span>
+    }
+
+    @GetMapping(&quot;/unread&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;NotificationMessage&gt;&gt;&gt; getUnreadNotifications(
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L42">        List&lt;NotificationMessage&gt; notifications = notificationService.getUnreadNotifications(userId);</span>
+<span class="nc" id="L43">        return ResponseEntity.ok(StandardResponse.success(&quot;Unread notifications retrieved&quot;, notifications));</span>
+    }
+
+    @GetMapping(&quot;/unread/count&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Map&lt;String, Long&gt;&gt;&gt; getUnreadCount(
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L50">        long count = notificationService.getUnreadCount(userId);</span>
+<span class="nc" id="L51">        return ResponseEntity.ok(StandardResponse.success(&quot;Unread count retrieved&quot;, </span>
+<span class="nc" id="L52">            Map.of(&quot;unreadCount&quot;, count)));</span>
+    }
+
+    @PutMapping(&quot;/{id}/read&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; markAsRead(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Notification ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L60">        notificationService.markAsRead(id, userId);</span>
+<span class="nc" id="L61">        return ResponseEntity.ok(StandardResponse.success(&quot;Notification marked as read&quot;, null));</span>
+    }
+
+    @PutMapping(&quot;/read-all&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; markAllAsRead(
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L68">        notificationService.markAllAsRead(userId);</span>
+<span class="nc" id="L69">        return ResponseEntity.ok(StandardResponse.success(&quot;All notifications marked as read&quot;, null));</span>
+    }
+
+    @PostMapping(&quot;/send&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;NotificationMessage&gt;&gt; sendNotification(
+            @Valid @RequestBody NotificationMessage request) {
+        
+<span class="nc" id="L77">        log.info(&quot;Sending notification to user {}&quot;, request.getUserId());</span>
+        
+<span class="nc" id="L79">        NotificationMessage sent = notificationService.createAndSendNotification(</span>
+<span class="nc" id="L80">            request.getUserId(),</span>
+<span class="nc" id="L81">            request.getClaimId(),</span>
+<span class="nc" id="L82">            request.getTitle(),</span>
+<span class="nc" id="L83">            request.getMessage(),</span>
+<span class="nc" id="L84">            request.getType(),</span>
+<span class="nc" id="L85">            request.getActionUrl(),</span>
+<span class="nc" id="L86">            request.getSenderId()</span>
+        );
+        
+<span class="nc" id="L89">        return ResponseEntity.ok(StandardResponse.success(&quot;Notification sent&quot;, sent));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; deleteNotification(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Notification ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L97">        notificationService.deleteNotification(id, userId);</span>
+<span class="nc" id="L98">        return ResponseEntity.ok(StandardResponse.success(&quot;Notification deleted&quot;, null));</span>
+    }
+
+    @PostMapping(&quot;/test&quot;)
+    @PreAuthorize(&quot;hasAnyRole('POLICYHOLDER', 'ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;NotificationMessage&gt;&gt; sendTestNotification(
+            @RequestAttribute(&quot;userId&quot;) Long userId) {
+<span class="nc" id="L105">        NotificationMessage sent = notificationService.createAndSendNotification(</span>
+<span class="nc" id="L106">                userId,</span>
+<span class="nc" id="L107">                null,</span>
+<span class="nc" id="L108">                &quot;Test Notification&quot;,</span>
+<span class="nc" id="L109">                &quot;This is a test notification&quot;,</span>
+<span class="nc" id="L110">                com.claimswift.notificationservice.entity.Notification.NotificationType.SYSTEM_MESSAGE,</span>
+<span class="nc" id="L111">                null,</span>
+<span class="nc" id="L112">                userId</span>
+        );
+<span class="nc" id="L114">        return ResponseEntity.ok(StandardResponse.success(&quot;Test notification sent&quot;, sent));</span>
+    }
+
+    @PostMapping(&quot;/internal/claim-status&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; sendInternalClaimStatusNotification(
+            @RequestBody Map&lt;String, Object&gt; payload) {
+<span class="nc" id="L121">        Long userId = toLong(payload.get(&quot;userId&quot;));</span>
+<span class="nc" id="L122">        Long claimId = toLong(payload.get(&quot;claimId&quot;));</span>
+<span class="nc" id="L123">        String claimNumber = String.valueOf(payload.getOrDefault(&quot;claimNumber&quot;, claimId));</span>
+<span class="nc" id="L124">        String status = String.valueOf(payload.getOrDefault(&quot;status&quot;, &quot;UPDATED&quot;));</span>
+
+<span class="nc bnc" id="L126" title="All 4 branches missed.">        if (userId == null || claimId == null) {</span>
+<span class="nc" id="L127">            return ResponseEntity.badRequest()</span>
+<span class="nc" id="L128">                    .body(StandardResponse.error(&quot;userId and claimId are required&quot;, &quot;VALIDATION_ERROR&quot;));</span>
+        }
+
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        if (&quot;APPROVED&quot;.equalsIgnoreCase(status)) {</span>
+<span class="nc" id="L132">            notificationService.sendClaimApprovedNotification(userId, claimId, claimNumber);</span>
+<span class="nc" id="L133">        } else {</span>
+<span class="nc" id="L134">            notificationService.sendClaimStatusUpdate(userId, claimId, claimNumber, status);</span>
+        }
+
+<span class="nc" id="L137">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim status notification sent&quot;, null));</span>
+    }
+
+    @PostMapping(&quot;/internal/payment-processed&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; sendInternalPaymentProcessedNotification(
+            @RequestBody Map&lt;String, Object&gt; payload) {
+<span class="nc" id="L144">        Long userId = toLong(payload.get(&quot;userId&quot;));</span>
+<span class="nc" id="L145">        Long claimId = toLong(payload.get(&quot;claimId&quot;));</span>
+<span class="nc" id="L146">        String claimNumber = String.valueOf(payload.getOrDefault(&quot;claimNumber&quot;, claimId));</span>
+<span class="nc" id="L147">        String amount = String.valueOf(payload.getOrDefault(&quot;amount&quot;, &quot;0&quot;));</span>
+
+<span class="nc bnc" id="L149" title="All 4 branches missed.">        if (userId == null || claimId == null) {</span>
+<span class="nc" id="L150">            return ResponseEntity.badRequest()</span>
+<span class="nc" id="L151">                    .body(StandardResponse.error(&quot;userId and claimId are required&quot;, &quot;VALIDATION_ERROR&quot;));</span>
+        }
+
+<span class="nc" id="L154">        notificationService.sendPaymentProcessedNotification(userId, claimId, claimNumber, amount);</span>
+<span class="nc" id="L155">        return ResponseEntity.ok(StandardResponse.success(&quot;Payment notification sent&quot;, null));</span>
+    }
+
+    private Long toLong(Object value) {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L160">            return null;</span>
+        }
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        if (value instanceof Number number) {</span>
+<span class="nc" id="L163">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L166">            return Long.parseLong(String.valueOf(value));</span>
+<span class="nc" id="L167">        } catch (NumberFormatException ex) {</span>
+<span class="nc" id="L168">            return null;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

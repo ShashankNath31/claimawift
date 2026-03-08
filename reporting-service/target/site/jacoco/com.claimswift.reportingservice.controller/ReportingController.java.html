@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportingController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Reporting Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.reportingservice.controller</a> &gt; <span class="el_source">ReportingController.java</span></div><h1>ReportingController.java</h1><pre class="source lang-java linenums">package com.claimswift.reportingservice.controller;
+
+import com.claimswift.reportingservice.dto.AdjusterPerformanceReport;
+import com.claimswift.reportingservice.dto.ClaimSummaryReport;
+import com.claimswift.reportingservice.dto.PaymentReport;
+import com.claimswift.reportingservice.service.ReportingService;
+import com.claimswift.reportingservice.util.StandardResponse;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.Map;
+
+/**
+ * Reporting Controller
+ * Provides endpoints for generating various reports
+ */
+<span class="nc" id="L25">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/reports&quot;)
+@Validated
+public class ReportingController {
+
+    private final ReportingService reportingService;
+    
+<span class="nc" id="L33">    public ReportingController(ReportingService reportingService) {</span>
+<span class="nc" id="L34">        this.reportingService = reportingService;</span>
+<span class="nc" id="L35">    }</span>
+
+    @GetMapping(&quot;/claims/summary&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADJUSTER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;ClaimSummaryReport&gt;&gt; getClaimSummaryReport(
+            @RequestParam(name = &quot;startDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+<span class="nc" id="L43">        log.info(&quot;Generating claim summary report for period: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        String start = startDate != null ? startDate.toString() : null;</span>
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        String end = endDate != null ? endDate.toString() : null;</span>
+        
+<span class="nc" id="L48">        ClaimSummaryReport report = reportingService.generateClaimSummaryReport(start, end);</span>
+<span class="nc" id="L49">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim summary report generated successfully&quot;, report));</span>
+    }
+
+    @GetMapping(&quot;/claims/summary/pdf&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;byte[]&gt; exportClaimSummaryPdf(
+            @RequestParam(name = &quot;startDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+<span class="nc" id="L58">        log.info(&quot;Exporting claim summary report as PDF for period: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        String start = startDate != null ? startDate.toString() : null;</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">        String end = endDate != null ? endDate.toString() : null;</span>
+        
+<span class="nc" id="L63">        byte[] pdfBytes = reportingService.exportClaimSummaryToPdf(start, end);</span>
+        
+<span class="nc" id="L65">        String filename = &quot;claim-summary-report-&quot; + LocalDate.now() + &quot;.pdf&quot;;</span>
+        
+<span class="nc" id="L67">        return ResponseEntity.ok()</span>
+<span class="nc" id="L68">                .header(HttpHeaders.CONTENT_DISPOSITION, &quot;attachment; filename=\&quot;&quot; + filename + &quot;\&quot;&quot;)</span>
+<span class="nc" id="L69">                .contentType(MediaType.APPLICATION_PDF)</span>
+<span class="nc" id="L70">                .body(pdfBytes);</span>
+    }
+
+    @GetMapping(&quot;/payments&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;PaymentReport&gt;&gt; getPaymentReport(
+            @RequestParam(name = &quot;startDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+<span class="nc" id="L79">        log.info(&quot;Generating payment report for period: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        String start = startDate != null ? startDate.toString() : null;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        String end = endDate != null ? endDate.toString() : null;</span>
+        
+<span class="nc" id="L84">        PaymentReport report = reportingService.generatePaymentReport(start, end);</span>
+<span class="nc" id="L85">        return ResponseEntity.ok(StandardResponse.success(&quot;Payment report generated successfully&quot;, report));</span>
+    }
+
+    @GetMapping(&quot;/payments/pdf&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;byte[]&gt; exportPaymentReportPdf(
+            @RequestParam(name = &quot;startDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+<span class="nc" id="L94">        log.info(&quot;Exporting payment report as PDF for period: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc bnc" id="L96" title="All 2 branches missed.">        String start = startDate != null ? startDate.toString() : null;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        String end = endDate != null ? endDate.toString() : null;</span>
+        
+<span class="nc" id="L99">        byte[] pdfBytes = reportingService.exportPaymentReportToPdf(start, end);</span>
+        
+<span class="nc" id="L101">        String filename = &quot;payment-report-&quot; + LocalDate.now() + &quot;.pdf&quot;;</span>
+        
+<span class="nc" id="L103">        return ResponseEntity.ok()</span>
+<span class="nc" id="L104">                .header(HttpHeaders.CONTENT_DISPOSITION, &quot;attachment; filename=\&quot;&quot; + filename + &quot;\&quot;&quot;)</span>
+<span class="nc" id="L105">                .contentType(MediaType.APPLICATION_PDF)</span>
+<span class="nc" id="L106">                .body(pdfBytes);</span>
+    }
+
+    @GetMapping(&quot;/adjusters/performance&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;AdjusterPerformanceReport&gt;&gt; getAdjusterPerformanceReport(
+            @RequestParam(name = &quot;startDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+<span class="nc" id="L115">        log.info(&quot;Generating adjuster performance report for period: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        String start = startDate != null ? startDate.toString() : null;</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">        String end = endDate != null ? endDate.toString() : null;</span>
+        
+<span class="nc" id="L120">        AdjusterPerformanceReport report = reportingService.generateAdjusterPerformanceReport(start, end);</span>
+<span class="nc" id="L121">        return ResponseEntity.ok(StandardResponse.success(&quot;Adjuster performance report generated successfully&quot;, report));</span>
+    }
+
+    @GetMapping(&quot;/adjusters/performance/pdf&quot;)
+    @PreAuthorize(&quot;hasAnyRole('MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;byte[]&gt; exportAdjusterPerformancePdf(
+            @RequestParam(name = &quot;startDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        
+<span class="nc" id="L130">        log.info(&quot;Exporting adjuster performance report as PDF for period: {} to {}&quot;, startDate, endDate);</span>
+        
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        String start = startDate != null ? startDate.toString() : null;</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        String end = endDate != null ? endDate.toString() : null;</span>
+        
+<span class="nc" id="L135">        byte[] pdfBytes = reportingService.exportAdjusterPerformanceToPdf(start, end);</span>
+        
+<span class="nc" id="L137">        String filename = &quot;adjuster-performance-report-&quot; + LocalDate.now() + &quot;.pdf&quot;;</span>
+        
+<span class="nc" id="L139">        return ResponseEntity.ok()</span>
+<span class="nc" id="L140">                .header(HttpHeaders.CONTENT_DISPOSITION, &quot;attachment; filename=\&quot;&quot; + filename + &quot;\&quot;&quot;)</span>
+<span class="nc" id="L141">                .contentType(MediaType.APPLICATION_PDF)</span>
+<span class="nc" id="L142">                .body(pdfBytes);</span>
+    }
+
+    @PostMapping(&quot;/claim-event&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; reportClaimEvent(
+            @RequestBody @NotEmpty(message = &quot;Event payload is required&quot;) Map&lt;String, Object&gt; eventData) {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        if (!eventData.containsKey(&quot;claimId&quot;)) {</span>
+<span class="nc" id="L150">            throw new IllegalArgumentException(&quot;claimId is required in event payload&quot;);</span>
+        }
+<span class="nc bnc" id="L152" title="All 2 branches missed.">        if (!eventData.containsKey(&quot;eventType&quot;)) {</span>
+<span class="nc" id="L153">            throw new IllegalArgumentException(&quot;eventType is required in event payload&quot;);</span>
+        }
+<span class="nc" id="L155">        reportingService.recordClaimEvent(eventData);</span>
+<span class="nc" id="L156">        log.info(&quot;Claim event received: {}&quot;, eventData);</span>
+<span class="nc" id="L157">        return ResponseEntity.ok(StandardResponse.success(&quot;Claim event recorded&quot;, null));</span>
+    }
+
+    @PostMapping(&quot;/status-change&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; reportStatusChange(
+            @RequestBody @NotEmpty(message = &quot;Status payload is required&quot;) Map&lt;String, Object&gt; statusChangeData) {
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (!statusChangeData.containsKey(&quot;claimId&quot;)) {</span>
+<span class="nc" id="L165">            throw new IllegalArgumentException(&quot;claimId is required in status payload&quot;);</span>
+        }
+<span class="nc" id="L167">        boolean hasLegacyStatus = statusChangeData.containsKey(&quot;status&quot;);</span>
+<span class="nc bnc" id="L168" title="All 4 branches missed.">        boolean hasWorkflowStatuses = statusChangeData.containsKey(&quot;oldStatus&quot;) &amp;&amp; statusChangeData.containsKey(&quot;newStatus&quot;);</span>
+<span class="nc bnc" id="L169" title="All 4 branches missed.">        if (!hasLegacyStatus &amp;&amp; !hasWorkflowStatuses) {</span>
+<span class="nc" id="L170">            throw new IllegalArgumentException(&quot;status or oldStatus/newStatus is required in status payload&quot;);</span>
+        }
+<span class="nc" id="L172">        reportingService.recordStatusChange(statusChangeData);</span>
+<span class="nc" id="L173">        log.info(&quot;Claim status change received: {}&quot;, statusChangeData);</span>
+<span class="nc" id="L174">        return ResponseEntity.ok(StandardResponse.success(&quot;Status change recorded&quot;, null));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

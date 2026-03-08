@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DocumentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Document Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.documentservice.service</a> &gt; <span class="el_source">DocumentService.java</span></div><h1>DocumentService.java</h1><pre class="source lang-java linenums">package com.claimswift.documentservice.service;
+
+import com.claimswift.documentservice.dto.DocumentResponse;
+import com.claimswift.documentservice.dto.DocumentUploadRequest;
+import com.claimswift.documentservice.client.ClaimServiceClient;
+import com.claimswift.documentservice.entity.Document;
+import com.claimswift.documentservice.exception.InvalidFileException;
+import com.claimswift.documentservice.exception.UnsupportedDocumentTypeException;
+import com.claimswift.documentservice.repository.DocumentRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Locale;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L36">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class DocumentService {
+
+    private final DocumentRepository documentRepository;
+    private final ClaimServiceClient claimServiceClient;
+
+    @Value(&quot;${file.storage.path:/uploads}&quot;)
+    private String baseStoragePath;
+
+    @Value(&quot;${file.max-size:10485760}&quot;)
+    private Long maxFileSize;
+
+    @Transactional
+    public DocumentResponse uploadDocument(MultipartFile file, DocumentUploadRequest request, Long uploadedBy, String username) {
+<span class="fc" id="L52">        ensurePolicyholderClaimAccess(request.getClaimId(), uploadedBy);</span>
+<span class="fc" id="L53">        validateFile(file);</span>
+
+        try {
+<span class="fc" id="L56">            Path claimUploadPath = Paths.get(baseStoragePath, String.valueOf(request.getClaimId()));</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">            if (!Files.exists(claimUploadPath)) {</span>
+<span class="fc" id="L58">                Files.createDirectories(claimUploadPath);</span>
+<span class="fc" id="L59">                log.info(&quot;Created directory: {}&quot;, claimUploadPath);</span>
+            }
+
+<span class="fc" id="L62">            String originalFileName = file.getOriginalFilename();</span>
+<span class="fc" id="L63">            String fileExtension = getFileExtension(originalFileName);</span>
+<span class="fc" id="L64">            String uniqueFileName = UUID.randomUUID() + &quot;.&quot; + fileExtension;</span>
+
+<span class="fc" id="L66">            Path filePath = claimUploadPath.resolve(uniqueFileName);</span>
+<span class="fc" id="L67">            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);</span>
+
+<span class="fc" id="L69">            Document document = Document.builder()</span>
+<span class="fc" id="L70">                    .claimId(request.getClaimId())</span>
+<span class="fc" id="L71">                    .uploadedBy(uploadedBy)</span>
+<span class="fc" id="L72">                    .fileName(uniqueFileName)</span>
+<span class="fc" id="L73">                    .filePath(filePath.toString())</span>
+<span class="fc" id="L74">                    .fileType(fileExtension.toUpperCase())</span>
+<span class="fc" id="L75">                    .fileSize(file.getSize())</span>
+<span class="fc" id="L76">                    .documentType(request.getDocumentType())</span>
+<span class="fc" id="L77">                    .description(request.getDescription())</span>
+<span class="fc" id="L78">                    .originalFileName(originalFileName)</span>
+<span class="fc" id="L79">                    .mimeType(file.getContentType())</span>
+<span class="fc" id="L80">                    .createdBy(username)</span>
+<span class="fc" id="L81">                    .updatedBy(username)</span>
+<span class="fc" id="L82">                    .build();</span>
+
+<span class="fc" id="L84">            Document savedDocument = documentRepository.save(document);</span>
+<span class="fc" id="L85">            return mapToResponse(savedDocument);</span>
+<span class="nc" id="L86">        } catch (IOException e) {</span>
+<span class="nc" id="L87">            log.error(&quot;Failed to upload document&quot;, e);</span>
+<span class="nc" id="L88">            throw new RuntimeException(&quot;Failed to upload document: &quot; + e.getMessage());</span>
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentResponse getDocument(Long id) {
+<span class="fc" id="L94">        return getDocument(id, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public DocumentResponse getDocument(Long id, Long requesterUserId) {
+<span class="fc" id="L99">        Document document = documentRepository.findById(id)</span>
+<span class="pc" id="L100">                .orElseThrow(() -&gt; new RuntimeException(&quot;Document not found with id: &quot; + id));</span>
+<span class="fc" id="L101">        ensurePolicyholderClaimAccess(document.getClaimId(), requesterUserId);</span>
+<span class="fc" id="L102">        return mapToResponse(document);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;DocumentResponse&gt; getDocumentsByClaim(Long claimId) {
+<span class="fc" id="L107">        return getDocumentsByClaim(claimId, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;DocumentResponse&gt; getDocumentsByClaim(Long claimId, Long requesterUserId) {
+<span class="fc" id="L112">        ensurePolicyholderClaimAccess(claimId, requesterUserId);</span>
+<span class="fc" id="L113">        return documentRepository.findByClaimId(claimId).stream()</span>
+<span class="fc" id="L114">                .map(this::mapToResponse)</span>
+<span class="fc" id="L115">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;DocumentResponse&gt; getDocumentsByUser(Long userId) {
+<span class="fc" id="L120">        return getDocumentsByUser(userId, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;DocumentResponse&gt; getDocumentsByUser(Long userId, Long requesterUserId) {
+<span class="pc bpc" id="L125" title="2 of 6 branches missed.">        if (isPolicyholderOnly() &amp;&amp; (requesterUserId == null || !requesterUserId.equals(userId))) {</span>
+<span class="fc" id="L126">            throw new AccessDeniedException(&quot;You are not allowed to access documents for this user.&quot;);</span>
+        }
+<span class="fc" id="L128">        return documentRepository.findByUploadedBy(userId).stream()</span>
+<span class="fc" id="L129">                .map(this::mapToResponse)</span>
+<span class="fc" id="L130">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;DocumentResponse&gt; getDocumentsByType(Long claimId, Document.DocumentType documentType) {
+<span class="fc" id="L135">        return getDocumentsByType(claimId, documentType, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;DocumentResponse&gt; getDocumentsByType(Long claimId, Document.DocumentType documentType, Long requesterUserId) {
+<span class="fc" id="L140">        ensurePolicyholderClaimAccess(claimId, requesterUserId);</span>
+<span class="fc" id="L141">        return documentRepository.findByClaimIdAndDocumentType(claimId, documentType).stream()</span>
+<span class="fc" id="L142">                .map(this::mapToResponse)</span>
+<span class="fc" id="L143">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public long countDocumentsByClaim(Long claimId) {
+<span class="fc" id="L148">        return documentRepository.countByClaimId(claimId);</span>
+    }
+
+    @Transactional
+    public void deleteDocument(Long id, String username) {
+<span class="fc" id="L153">        deleteDocument(id, null, username);</span>
+<span class="fc" id="L154">    }</span>
+
+    @Transactional
+    public void deleteDocument(Long id, Long requesterUserId, String username) {
+<span class="fc" id="L158">        Document document = documentRepository.findById(id)</span>
+<span class="pc" id="L159">                .orElseThrow(() -&gt; new RuntimeException(&quot;Document not found with id: &quot; + id));</span>
+<span class="fc" id="L160">        ensurePolicyholderClaimAccess(document.getClaimId(), requesterUserId);</span>
+
+        try {
+<span class="fc" id="L163">            Path filePath = Paths.get(document.getFilePath());</span>
+<span class="fc" id="L164">            Files.deleteIfExists(filePath);</span>
+
+<span class="fc" id="L166">            Path claimDir = filePath.getParent();</span>
+<span class="pc bpc" id="L167" title="3 of 6 branches missed.">            if (claimDir != null &amp;&amp; Files.exists(claimDir) &amp;&amp; Files.list(claimDir).count() == 0) {</span>
+<span class="fc" id="L168">                Files.deleteIfExists(claimDir);</span>
+            }
+
+<span class="fc" id="L171">            documentRepository.delete(document);</span>
+<span class="fc" id="L172">            log.info(&quot;Document deleted: {} by {}&quot;, id, username);</span>
+<span class="pc" id="L173">        } catch (IOException e) {</span>
+<span class="nc" id="L174">            log.error(&quot;Failed to delete document file&quot;, e);</span>
+<span class="nc" id="L175">            throw new RuntimeException(&quot;Failed to delete document: &quot; + e.getMessage());</span>
+        }
+<span class="fc" id="L177">    }</span>
+
+    @Transactional(readOnly = true)
+    public byte[] downloadDocument(Long id) {
+<span class="fc" id="L181">        Document document = documentRepository.findById(id)</span>
+<span class="pc" id="L182">                .orElseThrow(() -&gt; new RuntimeException(&quot;Document not found with id: &quot; + id));</span>
+
+        try {
+<span class="fc" id="L185">            Path filePath = Paths.get(document.getFilePath());</span>
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">            if (!Files.exists(filePath)) {</span>
+<span class="fc" id="L187">                throw new RuntimeException(&quot;File not found on disk: &quot; + document.getFilePath());</span>
+            }
+<span class="nc" id="L189">            return Files.readAllBytes(filePath);</span>
+<span class="nc" id="L190">        } catch (IOException e) {</span>
+<span class="nc" id="L191">            log.error(&quot;Failed to read document file&quot;, e);</span>
+<span class="nc" id="L192">            throw new RuntimeException(&quot;Failed to download document: &quot; + e.getMessage());</span>
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public Path getDocumentFilePath(Long id) {
+<span class="fc" id="L198">        return getDocumentFilePath(id, null);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Path getDocumentFilePath(Long id, Long requesterUserId) {
+<span class="fc" id="L203">        Document document = documentRepository.findById(id)</span>
+<span class="pc" id="L204">                .orElseThrow(() -&gt; new RuntimeException(&quot;Document not found with id: &quot; + id));</span>
+<span class="fc" id="L205">        ensurePolicyholderClaimAccess(document.getClaimId(), requesterUserId);</span>
+<span class="fc" id="L206">        return Paths.get(document.getFilePath());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Resource loadFileAsResource(Path filePath) {
+        try {
+<span class="fc" id="L212">            Resource resource = new UrlResource(filePath.toUri());</span>
+<span class="pc bpc" id="L213" title="1 of 4 branches missed.">            if (!resource.exists() || !resource.isReadable()) {</span>
+<span class="fc" id="L214">                throw new RuntimeException(&quot;File not found or not readable: &quot; + filePath);</span>
+            }
+<span class="fc" id="L216">            return resource;</span>
+<span class="nc" id="L217">        } catch (MalformedURLException e) {</span>
+<span class="nc" id="L218">            throw new RuntimeException(&quot;Invalid file path: &quot; + filePath, e);</span>
+        }
+    }
+
+    private void validateFile(MultipartFile file) {
+<span class="fc bfc" id="L223" title="All 2 branches covered.">        if (file.isEmpty()) {</span>
+<span class="fc" id="L224">            throw new InvalidFileException(&quot;File cannot be empty&quot;);</span>
+        }
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">        if (file.getSize() &gt; maxFileSize) {</span>
+<span class="nc" id="L227">            throw new InvalidFileException(&quot;File size exceeds maximum allowed size&quot;);</span>
+        }
+
+<span class="fc" id="L230">        String originalFileName = file.getOriginalFilename();</span>
+<span class="fc" id="L231">        String extension = getFileExtension(originalFileName).toLowerCase(Locale.ROOT);</span>
+<span class="fc bfc" id="L232" title="All 2 branches covered.">        if (!&quot;pdf&quot;.equals(extension)) {</span>
+<span class="fc" id="L233">            throw new UnsupportedDocumentTypeException(&quot;Only PDF documents are allowed. Upload a .pdf file.&quot;);</span>
+        }
+
+<span class="fc" id="L236">        String contentType = file.getContentType();</span>
+<span class="pc bpc" id="L237" title="2 of 4 branches missed.">        if (contentType != null &amp;&amp; !contentType.isBlank()) {</span>
+<span class="fc" id="L238">            List&lt;String&gt; allowedTypes = List.of(</span>
+<span class="fc" id="L239">                    &quot;application/pdf&quot;,</span>
+<span class="fc" id="L240">                    &quot;application/x-pdf&quot;,</span>
+<span class="fc" id="L241">                    &quot;application/octet-stream&quot;</span>
+            );
+<span class="fc" id="L243">            String normalizedType = contentType.toLowerCase(Locale.ROOT);</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">            if (!allowedTypes.contains(normalizedType)) {</span>
+<span class="fc" id="L245">                throw new UnsupportedDocumentTypeException(</span>
+<span class="fc" id="L246">                        &quot;Unsupported file type '&quot; + contentType + &quot;'. Only PDF is allowed.&quot;);</span>
+            }
+        }
+
+<span class="fc bfc" id="L250" title="All 2 branches covered.">        if (!hasPdfSignature(file)) {</span>
+<span class="fc" id="L251">            throw new UnsupportedDocumentTypeException(&quot;Uploaded file content is not a valid PDF document.&quot;);</span>
+        }
+<span class="fc" id="L253">    }</span>
+
+    private String getFileExtension(String fileName) {
+<span class="pc bpc" id="L256" title="2 of 4 branches missed.">        if (fileName == null || !fileName.contains(&quot;.&quot;)) {</span>
+<span class="nc" id="L257">            return &quot;unknown&quot;;</span>
+        }
+<span class="fc" id="L259">        return fileName.substring(fileName.lastIndexOf(&quot;.&quot;) + 1).toLowerCase();</span>
+    }
+
+    private boolean hasPdfSignature(MultipartFile file) {
+        try {
+<span class="fc" id="L264">            byte[] header = file.getInputStream().readNBytes(5);</span>
+<span class="pc bpc" id="L265" title="1 of 2 branches missed.">            return header.length == 5</span>
+<span class="fc bfc" id="L266" title="All 2 branches covered.">                    &amp;&amp; header[0] == '%'</span>
+<span class="pc bpc" id="L267" title="1 of 2 branches missed.">                    &amp;&amp; header[1] == 'P'</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">                    &amp;&amp; header[2] == 'D'</span>
+<span class="pc bpc" id="L269" title="1 of 2 branches missed.">                    &amp;&amp; header[3] == 'F'</span>
+<span class="pc bpc" id="L270" title="1 of 2 branches missed.">                    &amp;&amp; header[4] == '-';</span>
+<span class="nc" id="L271">        } catch (IOException ex) {</span>
+<span class="nc" id="L272">            throw new InvalidFileException(&quot;Unable to read uploaded file for validation&quot;);</span>
+        }
+    }
+
+    private DocumentResponse mapToResponse(Document document) {
+<span class="fc" id="L277">        DocumentResponse response = new DocumentResponse();</span>
+<span class="fc" id="L278">        response.setId(document.getId());</span>
+<span class="fc" id="L279">        response.setClaimId(document.getClaimId());</span>
+<span class="fc" id="L280">        response.setUploadedBy(document.getUploadedBy());</span>
+<span class="fc" id="L281">        response.setFileName(document.getFileName());</span>
+<span class="fc" id="L282">        response.setFileType(document.getFileType());</span>
+<span class="fc" id="L283">        response.setFileSize(document.getFileSize());</span>
+<span class="fc" id="L284">        response.setDocumentType(document.getDocumentType());</span>
+<span class="fc" id="L285">        response.setDescription(document.getDescription());</span>
+<span class="fc" id="L286">        response.setOriginalFileName(document.getOriginalFileName());</span>
+<span class="fc" id="L287">        response.setMimeType(document.getMimeType());</span>
+<span class="fc" id="L288">        response.setCreatedAt(document.getCreatedAt());</span>
+<span class="fc" id="L289">        response.setUpdatedAt(document.getUpdatedAt());</span>
+<span class="fc" id="L290">        response.setDownloadUrl(&quot;/api/documents/&quot; + document.getId() + &quot;/download&quot;);</span>
+<span class="fc" id="L291">        return response;</span>
+    }
+
+    private void ensurePolicyholderClaimAccess(Long claimId, Long requesterUserId) {
+<span class="fc bfc" id="L295" title="All 2 branches covered.">        if (!isPolicyholderOnly()) {</span>
+<span class="fc" id="L296">            return;</span>
+        }
+<span class="pc bpc" id="L298" title="1 of 2 branches missed.">        if (requesterUserId == null) {</span>
+<span class="nc" id="L299">            throw new AccessDeniedException(&quot;Unable to validate claim access.&quot;);</span>
+        }
+<span class="fc" id="L301">        Map&lt;String, Object&gt; claimEnvelope = claimServiceClient.getClaimById(claimId);</span>
+<span class="fc" id="L302">        Object data = claimEnvelope.get(&quot;data&quot;);</span>
+<span class="pc bpc" id="L303" title="1 of 2 branches missed.">        if (!(data instanceof Map&lt;?, ?&gt; claimMap)) {</span>
+<span class="nc" id="L304">            throw new AccessDeniedException(&quot;Unable to validate claim access.&quot;);</span>
+        }
+<span class="fc" id="L306">        Long ownerId = parseLong(claimMap.get(&quot;policyholderId&quot;));</span>
+<span class="pc bpc" id="L307" title="2 of 4 branches missed.">        if (ownerId == null || !ownerId.equals(requesterUserId)) {</span>
+<span class="fc" id="L308">            throw new AccessDeniedException(&quot;You are not allowed to access documents for this claim.&quot;);</span>
+        }
+<span class="nc" id="L310">    }</span>
+
+    private Long parseLong(Object value) {
+<span class="pc bpc" id="L313" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L314">            return null;</span>
+        }
+<span class="pc bpc" id="L316" title="1 of 2 branches missed.">        if (value instanceof Number number) {</span>
+<span class="fc" id="L317">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L320">            return Long.parseLong(String.valueOf(value));</span>
+<span class="nc" id="L321">        } catch (NumberFormatException ex) {</span>
+<span class="nc" id="L322">            return null;</span>
+        }
+    }
+
+    private boolean isPolicyholderOnly() {
+<span class="fc" id="L327">        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L328" title="All 2 branches covered.">        if (authentication == null) {</span>
+<span class="fc" id="L329">            return false;</span>
+        }
+<span class="fc" id="L331">        Set&lt;String&gt; roles = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L332">                .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L333">                .collect(Collectors.toSet());</span>
+<span class="pc bpc" id="L334" title="1 of 2 branches missed.">        return roles.contains(&quot;ROLE_POLICYHOLDER&quot;)</span>
+<span class="pc bpc" id="L335" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADJUSTER&quot;)</span>
+<span class="pc bpc" id="L336" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_MANAGER&quot;)</span>
+<span class="pc bpc" id="L337" title="1 of 2 branches missed.">                &amp;&amp; !roles.contains(&quot;ROLE_ADMIN&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

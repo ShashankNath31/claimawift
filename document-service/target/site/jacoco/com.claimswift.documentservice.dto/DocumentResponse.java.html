@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DocumentResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Document Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.documentservice.dto</a> &gt; <span class="el_source">DocumentResponse.java</span></div><h1>DocumentResponse.java</h1><pre class="source lang-java linenums">package com.claimswift.documentservice.dto;
+
+import com.claimswift.documentservice.entity.Document;
+import lombok.Data;
+
+import java.time.LocalDateTime;
+
+/**
+ * Document Response DTO
+ */
+<span class="pc bnc" id="L11" title="All 110 branches missed.">@Data</span>
+public class DocumentResponse {
+
+<span class="fc" id="L14">    private Long id;</span>
+<span class="nc" id="L15">    private Long claimId;</span>
+<span class="nc" id="L16">    private Long uploadedBy;</span>
+<span class="fc" id="L17">    private String fileName;</span>
+<span class="nc" id="L18">    private String originalFileName;</span>
+<span class="nc" id="L19">    private String fileType;</span>
+<span class="nc" id="L20">    private String mimeType;</span>
+<span class="nc" id="L21">    private Long fileSize;</span>
+<span class="nc" id="L22">    private Document.DocumentType documentType;</span>
+<span class="nc" id="L23">    private String description;</span>
+<span class="nc" id="L24">    private LocalDateTime createdAt;</span>
+<span class="nc" id="L25">    private LocalDateTime updatedAt;</span>
+<span class="nc" id="L26">    private String downloadUrl;</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

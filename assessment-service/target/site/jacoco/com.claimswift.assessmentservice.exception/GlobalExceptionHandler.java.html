@@ -46,7 +46,7 @@ import java.util.Map;
 <span class="nc" id="L46">        Map&lt;String, String&gt; errors = new LinkedHashMap&lt;&gt;();</span>
 <span class="nc bnc" id="L47" title="All 2 branches missed.">        for (ConstraintViolation&lt;?&gt; violation : ex.getConstraintViolations()) {</span>
 <span class="nc" id="L48">            errors.put(violation.getPropertyPath().toString(), violation.getMessage());</span>
-<span class="nc" id="L49">        }</span>
+        }
 <span class="nc" id="L50">        log.warn(&quot;Constraint violations: {}&quot;, errors);</span>
 <span class="nc" id="L51">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
 <span class="nc" id="L52">                .body(StandardResponse.error(&quot;Validation failed&quot;, &quot;VALIDATION_ERROR&quot;, errors, HttpStatus.BAD_REQUEST.value()));</span>
@@ -56,7 +56,7 @@ import java.util.Map;
     public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
 <span class="nc bnc" id="L57" title="All 2 branches missed.">        String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : &quot;valid type&quot;;</span>
 <span class="nc" id="L58">        String message = String.format(</span>
-                &quot;Invalid value '%s' for parameter '%s'. Expected %s.&quot;,
+<span class="nc" id="L59">                &quot;Invalid value '%s' for parameter '%s'. Expected %s.&quot;,</span>
 <span class="nc" id="L60">                ex.getValue(), ex.getName(), expectedType</span>
         );
 <span class="nc" id="L62">        log.warn(&quot;Type mismatch: {}&quot;, message);</span>
@@ -97,7 +97,7 @@ import java.util.Map;
 <span class="nc" id="L97">        Map&lt;String, String&gt; errors = new LinkedHashMap&lt;&gt;();</span>
 <span class="nc bnc" id="L98" title="All 2 branches missed.">        for (FieldError fieldError : bindingResult.getFieldErrors()) {</span>
 <span class="nc" id="L99">            errors.put(fieldError.getField(), fieldError.getDefaultMessage());</span>
-<span class="nc" id="L100">        }</span>
+        }
 <span class="nc" id="L101">        return errors;</span>
     }
 }

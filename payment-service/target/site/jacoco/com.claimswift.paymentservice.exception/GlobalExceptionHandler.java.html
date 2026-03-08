@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Payment Service - Simulated Payment Gateway (Sandbox)</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.paymentservice.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.claimswift.paymentservice.exception;
+
+import com.claimswift.paymentservice.util.StandardResponse;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+<span class="fc" id="L24">@Slf4j</span>
+@RestControllerAdvice
+<span class="fc" id="L26">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Map&lt;String, String&gt;&gt;&gt; handleValidationExceptions(MethodArgumentNotValidException ex) {
+<span class="nc" id="L30">        Map&lt;String, String&gt; errors = toFieldErrors(ex.getBindingResult());</span>
+<span class="nc" id="L31">        log.warn(&quot;Validation failed: {}&quot;, errors);</span>
+<span class="nc" id="L32">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L33">                .body(StandardResponse.error(&quot;Validation failed&quot;, &quot;VALIDATION_ERROR&quot;, errors));</span>
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Map&lt;String, String&gt;&gt;&gt; handleBindException(BindException ex) {
+<span class="nc" id="L38">        Map&lt;String, String&gt; errors = toFieldErrors(ex.getBindingResult());</span>
+<span class="nc" id="L39">        log.warn(&quot;Request binding failed: {}&quot;, errors);</span>
+<span class="nc" id="L40">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L41">                .body(StandardResponse.error(&quot;Validation failed&quot;, &quot;VALIDATION_ERROR&quot;, errors));</span>
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Map&lt;String, String&gt;&gt;&gt; handleConstraintViolation(
+            ConstraintViolationException ex) {
+<span class="nc" id="L47">        Map&lt;String, String&gt; errors = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">        for (ConstraintViolation&lt;?&gt; violation : ex.getConstraintViolations()) {</span>
+<span class="nc" id="L49">            errors.put(violation.getPropertyPath().toString(), violation.getMessage());</span>
+        }
+<span class="nc" id="L51">        log.warn(&quot;Constraint violations: {}&quot;, errors);</span>
+<span class="nc" id="L52">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L53">                .body(StandardResponse.error(&quot;Validation failed&quot;, &quot;VALIDATION_ERROR&quot;, errors));</span>
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+<span class="nc bnc" id="L58" title="All 2 branches missed.">        String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : &quot;valid type&quot;;</span>
+<span class="nc" id="L59">        String message = String.format(</span>
+<span class="nc" id="L60">                &quot;Invalid value '%s' for parameter '%s'. Expected %s.&quot;,</span>
+<span class="nc" id="L61">                ex.getValue(), ex.getName(), expectedType</span>
+        );
+<span class="nc" id="L63">        log.warn(&quot;Type mismatch: {}&quot;, message);</span>
+<span class="nc" id="L64">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L65">                .body(StandardResponse.error(message, &quot;INVALID_PARAMETER_TYPE&quot;));</span>
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleMissingParameter(MissingServletRequestParameterException ex) {
+<span class="nc" id="L70">        String message = String.format(&quot;Missing required parameter '%s'.&quot;, ex.getParameterName());</span>
+<span class="nc" id="L71">        log.warn(&quot;Missing request parameter: {}&quot;, message);</span>
+<span class="nc" id="L72">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L73">                .body(StandardResponse.error(message, &quot;MISSING_PARAMETER&quot;));</span>
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleUnreadableMessage(HttpMessageNotReadableException ex) {
+<span class="nc" id="L78">        log.warn(&quot;Malformed request body: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L79">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L80">                .body(StandardResponse.error(&quot;Malformed JSON request body&quot;, &quot;INVALID_REQUEST_BODY&quot;));</span>
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleAuthenticationException(AuthenticationException ex) {
+<span class="nc" id="L85">        log.warn(&quot;Authentication failed: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L86">        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)</span>
+<span class="nc" id="L87">                .body(StandardResponse.error(&quot;Unauthorized&quot;, &quot;UNAUTHORIZED&quot;));</span>
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleAccessDeniedException(AccessDeniedException ex) {
+<span class="nc" id="L92">        log.warn(&quot;Access denied: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L93">        return ResponseEntity.status(HttpStatus.FORBIDDEN)</span>
+<span class="nc" id="L94">                .body(StandardResponse.error(&quot;Access Denied&quot;, &quot;ACCESS_DENIED&quot;));</span>
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleIllegalArgumentException(IllegalArgumentException ex) {
+<span class="nc" id="L99">        log.warn(&quot;Invalid argument: {}&quot;, ex.getMessage());</span>
+<span class="nc" id="L100">        return ResponseEntity.status(HttpStatus.BAD_REQUEST)</span>
+<span class="nc" id="L101">                .body(StandardResponse.error(ex.getMessage(), &quot;INVALID_ARGUMENT&quot;));</span>
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleRuntimeException(RuntimeException ex) {
+<span class="nc" id="L106">        log.error(&quot;Runtime exception: {}&quot;, ex.getMessage(), ex);</span>
+<span class="nc" id="L107">        return ResponseEntity.badRequest().body(StandardResponse.error(ex.getMessage(), &quot;RUNTIME_ERROR&quot;));</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;StandardResponse&lt;Void&gt;&gt; handleException(Exception ex) {
+<span class="nc" id="L112">        log.error(&quot;Unexpected error: {}&quot;, ex.getMessage(), ex);</span>
+<span class="nc" id="L113">        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)</span>
+<span class="nc" id="L114">                .body(StandardResponse.error(&quot;An unexpected error occurred&quot;, &quot;INTERNAL_ERROR&quot;));</span>
+    }
+
+    private Map&lt;String, String&gt; toFieldErrors(BindingResult bindingResult) {
+<span class="nc" id="L118">        Map&lt;String, String&gt; errors = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        for (FieldError fieldError : bindingResult.getFieldErrors()) {</span>
+<span class="nc" id="L120">            errors.put(fieldError.getField(), fieldError.getDefaultMessage());</span>
+        }
+<span class="nc" id="L122">        return errors;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

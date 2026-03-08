@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PaymentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Payment Service - Simulated Payment Gateway (Sandbox)</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.paymentservice.controller</a> &gt; <span class="el_source">PaymentController.java</span></div><h1>PaymentController.java</h1><pre class="source lang-java linenums">package com.claimswift.paymentservice.controller;
+
+import com.claimswift.paymentservice.dto.PaymentRequest;
+import com.claimswift.paymentservice.dto.PaymentResponse;
+import com.claimswift.paymentservice.dto.AutoPaymentRequest;
+import com.claimswift.paymentservice.entity.PaymentTransaction;
+import com.claimswift.paymentservice.service.PaymentService;
+import com.claimswift.paymentservice.util.StandardResponse;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+<span class="fc" id="L32">@Slf4j</span>
+@RestController
+@RequestMapping(&quot;/api/payments&quot;)
+@Validated
+@RequiredArgsConstructor
+public class PaymentController {
+
+    private final PaymentService paymentService;
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('MANAGER') and !hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;PaymentResponse&gt;&gt; processPayment(
+            @Valid @RequestBody PaymentRequest request,
+            @RequestAttribute(&quot;userId&quot;) Long userId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+
+<span class="nc" id="L48">        log.info(&quot;Processing payment request for claim {} by user {}&quot;, request.getClaimId(), username);</span>
+
+<span class="nc" id="L50">        PaymentResponse response = paymentService.processPayment(</span>
+<span class="nc" id="L51">                request,</span>
+<span class="nc" id="L52">                userId,</span>
+<span class="nc" id="L53">                username</span>
+        );
+
+<span class="nc" id="L56">        return ResponseEntity.ok(StandardResponse.success(&quot;Payment processed&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('MANAGER') and !hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;PaymentResponse&gt;&gt; getPayment(
+            @PathVariable(&quot;id&quot;) @Positive(message = &quot;Payment ID must be positive&quot;) Long id,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+
+<span class="nc" id="L65">        log.info(&quot;Fetching payment {}&quot;, id);</span>
+<span class="nc" id="L66">        PaymentResponse response = paymentService.getPayment(id, requesterUserId);</span>
+<span class="nc" id="L67">        return ResponseEntity.ok(StandardResponse.success(&quot;Payment retrieved&quot;, response));</span>
+    }
+
+    @GetMapping(&quot;/claim/{claimId}&quot;)
+    @PreAuthorize(&quot;hasRole('MANAGER') and !hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;List&lt;PaymentResponse&gt;&gt;&gt; getPaymentsByClaim(
+            @PathVariable(&quot;claimId&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId,
+            @RequestAttribute(&quot;userId&quot;) Long requesterUserId) {
+
+<span class="nc" id="L76">        log.info(&quot;Fetching payments for claim {}&quot;, claimId);</span>
+<span class="nc" id="L77">        List&lt;PaymentResponse&gt; responses = paymentService.getPaymentsByClaim(claimId, requesterUserId);</span>
+<span class="nc" id="L78">        return ResponseEntity.ok(StandardResponse.success(&quot;Payments retrieved&quot;, responses));</span>
+    }
+
+    @GetMapping(&quot;/internal/all&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getAllPaymentsForReporting() {
+<span class="nc" id="L84">        return ResponseEntity.ok(paymentService.getAllPayments().stream().map(this::toMap).toList());</span>
+    }
+
+    @GetMapping(&quot;/internal/status/{status}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getPaymentsByStatusForReporting(
+            @PathVariable(&quot;status&quot;) @NotBlank(message = &quot;Status is required&quot;) String status) {
+<span class="nc" id="L91">        PaymentTransaction.PaymentStatus paymentStatus = PaymentTransaction.PaymentStatus.valueOf(status.toUpperCase());</span>
+<span class="nc" id="L92">        return ResponseEntity.ok(paymentService.getPaymentsByStatus(paymentStatus).stream().map(this::toMap).toList());</span>
+    }
+
+    @GetMapping(&quot;/internal/summary&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;Map&lt;String, Object&gt;&gt; getPaymentSummaryForReporting(
+            @RequestParam(name = &quot;startDate&quot;, required = false) String startDate,
+            @RequestParam(name = &quot;endDate&quot;, required = false) String endDate) {
+<span class="nc" id="L100">        return ResponseEntity.ok(paymentService.getPaymentSummary(startDate, endDate));</span>
+    }
+
+    @GetMapping(&quot;/internal/claim/{claimId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADJUSTER', 'MANAGER', 'ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getPaymentsByClaimForReporting(
+            @PathVariable(&quot;claimId&quot;) @Positive(message = &quot;Claim ID must be positive&quot;) Long claimId) {
+<span class="nc" id="L107">        return ResponseEntity.ok(paymentService.getPaymentsByClaim(claimId).stream().map(this::toMap).toList());</span>
+    }
+
+    @PostMapping(&quot;/internal/auto-process&quot;)
+    @PreAuthorize(&quot;hasRole('MANAGER') and !hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;StandardResponse&lt;PaymentResponse&gt;&gt; autoProcessPaymentForApprovedClaim(
+            @Valid @RequestBody AutoPaymentRequest request,
+            @RequestAttribute(&quot;userId&quot;) Long userId,
+            @RequestAttribute(&quot;username&quot;) String username) {
+<span class="nc" id="L116">        PaymentResponse response = paymentService.processWorkflowPayment(request, userId, username);</span>
+<span class="nc" id="L117">        return ResponseEntity.ok(StandardResponse.success(&quot;Workflow payment processed&quot;, response));</span>
+    }
+
+    private Map&lt;String, Object&gt; toMap(PaymentResponse response) {
+<span class="nc" id="L121">        Map&lt;String, Object&gt; data = new LinkedHashMap&lt;&gt;();</span>
+<span class="nc" id="L122">        data.put(&quot;id&quot;, response.getId());</span>
+<span class="nc" id="L123">        data.put(&quot;transactionId&quot;, response.getTransactionId());</span>
+<span class="nc" id="L124">        data.put(&quot;claimId&quot;, response.getClaimId());</span>
+<span class="nc" id="L125">        data.put(&quot;policyholderId&quot;, response.getPolicyholderId());</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        data.put(&quot;amount&quot;, response.getAmount() != null ? response.getAmount() : BigDecimal.ZERO);</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        data.put(&quot;status&quot;, response.getStatus() != null ? response.getStatus().name() : null);</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        data.put(&quot;paymentMethod&quot;, response.getPaymentMethod() != null ? response.getPaymentMethod().name() : null);</span>
+<span class="nc" id="L129">        data.put(&quot;createdAt&quot;, response.getCreatedAt());</span>
+<span class="nc" id="L130">        data.put(&quot;updatedAt&quot;, response.getUpdatedAt());</span>
+<span class="nc" id="L131">        return data;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

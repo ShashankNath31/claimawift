@@ -38,7 +38,7 @@ import java.util.UUID;
 
         try {
 <span class="fc" id="L40">            filterChain.doFilter(enrichRequest(request, correlationId), response);</span>
-        } finally {
+<span class="fc" id="L41">        } finally {</span>
 <span class="fc" id="L42">            MDC.remove(CORRELATION_ID_KEY);</span>
         }
 <span class="fc" id="L44">    }</span>

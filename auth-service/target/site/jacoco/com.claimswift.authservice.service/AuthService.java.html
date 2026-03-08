@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Auth Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.authservice.service</a> &gt; <span class="el_source">AuthService.java</span></div><h1>AuthService.java</h1><pre class="source lang-java linenums">package com.claimswift.authservice.service;
+
+import com.claimswift.authservice.dto.*;
+import com.claimswift.authservice.entity.LoginOtpChallenge;
+import com.claimswift.authservice.entity.Role;
+import com.claimswift.authservice.entity.User;
+import com.claimswift.authservice.repository.LoginOtpChallengeRepository;
+import com.claimswift.authservice.repository.RoleRepository;
+import com.claimswift.authservice.repository.UserRepository;
+import com.claimswift.authservice.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.UUID;
+import java.security.SecureRandom;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Authentication Service
+ * Handles user registration, login, logout, and role management
+ */
+<span class="fc" id="L38">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final LoginOtpChallengeRepository loginOtpChallengeRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final AuthenticationManager authenticationManager;
+    private final JavaMailSender mailSender;
+
+    @Value(&quot;${auth.two-factor.otp-expiry-minutes:5}&quot;)
+    private Long otpExpiryMinutes = 5L;
+
+    @Value(&quot;${auth.two-factor.max-attempts:5}&quot;)
+    private Integer otpMaxAttempts = 5;
+
+    @Value(&quot;${auth.two-factor.mail-from:}&quot;)
+    private String otpMailFrom;
+
+    @Value(&quot;${auth.two-factor.enabled:true}&quot;)
+    private boolean twoFactorEnabled = true;
+
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (userRepository.existsByUsername(request.getUsername())) {</span>
+<span class="fc" id="L68">            throw new RuntimeException(&quot;Username already exists&quot;);</span>
+        }
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if (userRepository.existsByEmail(request.getEmail())) {</span>
+<span class="fc" id="L71">            throw new RuntimeException(&quot;Email already exists&quot;);</span>
+        }
+
+<span class="fc" id="L74">        Role policyholderRole = roleRepository.findByName(Role.RoleName.ROLE_POLICYHOLDER)</span>
+<span class="pc" id="L75">                .orElseThrow(() -&gt; new RuntimeException(&quot;Default policyholder role not found&quot;));</span>
+
+<span class="fc" id="L77">        User user = User.builder()</span>
+<span class="fc" id="L78">                .username(request.getUsername())</span>
+<span class="fc" id="L79">                .email(request.getEmail())</span>
+<span class="fc" id="L80">                .password(passwordEncoder.encode(request.getPassword()))</span>
+<span class="fc" id="L81">                .firstName(request.getFirstName())</span>
+<span class="fc" id="L82">                .lastName(request.getLastName())</span>
+<span class="fc" id="L83">                .phoneNumber(request.getPhoneNumber())</span>
+<span class="fc" id="L84">                .roles(Set.of(policyholderRole))</span>
+<span class="fc" id="L85">                .status(User.UserStatus.ACTIVE)</span>
+<span class="fc" id="L86">                .build();</span>
+
+<span class="fc" id="L88">        User savedUser = userRepository.save(user);</span>
+<span class="fc" id="L89">        log.info(&quot;User registered successfully: {}&quot;, savedUser.getUsername());</span>
+
+<span class="fc" id="L91">        String token = generateToken(savedUser);</span>
+
+<span class="fc" id="L93">        return AuthResponse.builder()</span>
+<span class="fc" id="L94">                .accessToken(token)</span>
+<span class="fc" id="L95">                .tokenType(&quot;Bearer&quot;)</span>
+<span class="fc" id="L96">                .expiresIn(jwtTokenProvider.getExpirationTime())</span>
+<span class="fc" id="L97">                .user(mapToUserDTO(savedUser))</span>
+<span class="fc" id="L98">                .build();</span>
+    }
+
+    @Transactional
+    public UserDTO createInternalUser(AdminCreateUserRequest request, String actorUsername) {
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (userRepository.existsByUsername(request.getUsername())) {</span>
+<span class="nc" id="L104">            throw new IllegalArgumentException(&quot;Username already exists&quot;);</span>
+        }
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        if (userRepository.existsByEmail(request.getEmail())) {</span>
+<span class="nc" id="L107">            throw new IllegalArgumentException(&quot;Email already exists&quot;);</span>
+        }
+
+<span class="fc" id="L110">        Set&lt;Role&gt; roles = resolveRoles(request.getRoles());</span>
+<span class="fc" id="L111">        User.UserStatus status = resolveStatus(request.getStatus(), User.UserStatus.ACTIVE);</span>
+
+<span class="fc" id="L113">        User user = User.builder()</span>
+<span class="fc" id="L114">                .username(request.getUsername())</span>
+<span class="fc" id="L115">                .email(request.getEmail())</span>
+<span class="fc" id="L116">                .password(passwordEncoder.encode(request.getPassword()))</span>
+<span class="fc" id="L117">                .firstName(request.getFirstName())</span>
+<span class="fc" id="L118">                .lastName(request.getLastName())</span>
+<span class="fc" id="L119">                .phoneNumber(request.getPhoneNumber())</span>
+<span class="fc" id="L120">                .roles(roles)</span>
+<span class="fc" id="L121">                .status(status)</span>
+<span class="fc" id="L122">                .build();</span>
+
+<span class="fc" id="L124">        User saved = userRepository.save(user);</span>
+<span class="fc" id="L125">        log.info(&quot;Admin {} created internal user {} with roles {}&quot;, actorUsername, saved.getUsername(), request.getRoles());</span>
+<span class="fc" id="L126">        return mapToUserDTO(saved);</span>
+    }
+
+    @Transactional
+    public UserDTO updateUserRoles(Long userId, Set&lt;String&gt; roleNames, String actorUsername) {
+<span class="fc" id="L131">        User user = userRepository.findById(userId)</span>
+<span class="pc" id="L132">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found&quot;));</span>
+<span class="fc" id="L133">        Set&lt;Role&gt; roles = resolveRoles(roleNames);</span>
+<span class="fc" id="L134">        user.setRoles(roles);</span>
+<span class="fc" id="L135">        User saved = userRepository.save(user);</span>
+<span class="fc" id="L136">        log.info(&quot;Admin {} updated roles for user {} to {}&quot;, actorUsername, saved.getUsername(), roleNames);</span>
+<span class="fc" id="L137">        return mapToUserDTO(saved);</span>
+    }
+
+    @Transactional
+    public UserDTO updateUserStatus(Long userId, String status, String actorUsername) {
+<span class="fc" id="L142">        User user = userRepository.findById(userId)</span>
+<span class="pc" id="L143">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found&quot;));</span>
+<span class="fc" id="L144">        User.UserStatus resolved = resolveStatus(status, user.getStatus());</span>
+<span class="fc" id="L145">        user.setStatus(resolved);</span>
+<span class="fc" id="L146">        User saved = userRepository.save(user);</span>
+<span class="fc" id="L147">        log.info(&quot;Admin {} updated status for user {} to {}&quot;, actorUsername, saved.getUsername(), resolved);</span>
+<span class="fc" id="L148">        return mapToUserDTO(saved);</span>
+    }
+
+    @Transactional
+    public LoginChallengeResponse login(LoginRequest request) {
+<span class="fc" id="L153">        Authentication authentication = authenticationManager.authenticate(</span>
+<span class="fc" id="L154">                new UsernamePasswordAuthenticationToken(</span>
+<span class="fc" id="L155">                        request.getUsernameOrEmail(),</span>
+<span class="fc" id="L156">                        request.getPassword()</span>
+                )
+        );
+
+<span class="fc" id="L160">        SecurityContextHolder.getContext().setAuthentication(authentication);</span>
+
+<span class="fc" id="L162">        User user = userRepository.findByUsernameOrEmail(request.getUsernameOrEmail(), request.getUsernameOrEmail())</span>
+<span class="pc" id="L163">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found&quot;));</span>
+
+<span class="fc bfc" id="L165" title="All 2 branches covered.">        if (!twoFactorEnabled) {</span>
+<span class="fc" id="L166">            throw new IllegalArgumentException(&quot;Two-factor authentication is disabled in this environment.&quot;);</span>
+        }
+
+<span class="fc" id="L169">        LocalDateTime now = LocalDateTime.now();</span>
+<span class="fc" id="L170">        invalidatePendingChallenges(user.getId(), now);</span>
+
+<span class="fc" id="L172">        String otpCode = generateOtpCode();</span>
+<span class="fc" id="L173">        LocalDateTime expiresAt = now.plusMinutes(Math.max(1, otpExpiryMinutes));</span>
+<span class="fc" id="L174">        LoginOtpChallenge challenge = LoginOtpChallenge.builder()</span>
+<span class="fc" id="L175">                .challengeId(UUID.randomUUID().toString())</span>
+<span class="fc" id="L176">                .user(user)</span>
+<span class="fc" id="L177">                .otpHash(passwordEncoder.encode(otpCode))</span>
+<span class="fc" id="L178">                .expiresAt(expiresAt)</span>
+<span class="fc" id="L179">                .attemptCount(0)</span>
+<span class="fc" id="L180">                .consumed(false)</span>
+<span class="fc" id="L181">                .build();</span>
+
+<span class="fc" id="L183">        LoginOtpChallenge savedChallenge = loginOtpChallengeRepository.save(challenge);</span>
+<span class="fc" id="L184">        sendLoginOtpEmail(user, otpCode, expiresAt);</span>
+
+<span class="fc" id="L186">        log.info(&quot;OTP login challenge generated for user {}&quot;, user.getUsername());</span>
+<span class="fc" id="L187">        return LoginChallengeResponse.builder()</span>
+<span class="fc" id="L188">                .challengeId(savedChallenge.getChallengeId())</span>
+<span class="fc" id="L189">                .maskedEmail(maskEmail(user.getEmail()))</span>
+<span class="fc" id="L190">                .expiresInSeconds(ChronoUnit.SECONDS.between(now, expiresAt))</span>
+<span class="fc" id="L191">                .build();</span>
+    }
+
+    @Transactional
+    public AuthResponse verifyLoginOtp(VerifyLoginOtpRequest request) {
+<span class="fc" id="L196">        LoginOtpChallenge challenge = loginOtpChallengeRepository.findByChallengeId(request.getChallengeId())</span>
+<span class="pc" id="L197">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid or expired login challenge.&quot;));</span>
+
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        if (Boolean.TRUE.equals(challenge.getConsumed())) {</span>
+<span class="nc" id="L200">            throw new IllegalArgumentException(&quot;This OTP challenge has already been used.&quot;);</span>
+        }
+
+<span class="fc" id="L203">        LocalDateTime now = LocalDateTime.now();</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">        if (challenge.getExpiresAt().isBefore(now)) {</span>
+<span class="fc" id="L205">            challenge.setConsumed(true);</span>
+<span class="fc" id="L206">            loginOtpChallengeRepository.save(challenge);</span>
+<span class="fc" id="L207">            throw new IllegalArgumentException(&quot;OTP expired. Please login again to request a new OTP.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">        int maxAttempts = Math.max(1, otpMaxAttempts == null ? 5 : otpMaxAttempts);</span>
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">        int attempts = challenge.getAttemptCount() == null ? 0 : challenge.getAttemptCount();</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">        if (attempts &gt;= maxAttempts) {</span>
+<span class="fc" id="L213">            challenge.setConsumed(true);</span>
+<span class="fc" id="L214">            loginOtpChallengeRepository.save(challenge);</span>
+<span class="fc" id="L215">            throw new IllegalArgumentException(&quot;Maximum OTP attempts exceeded. Please login again.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (!passwordEncoder.matches(request.getOtp(), challenge.getOtpHash())) {</span>
+<span class="fc" id="L219">            challenge.setAttemptCount(attempts + 1);</span>
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">            if (challenge.getAttemptCount() &gt;= maxAttempts) {</span>
+<span class="nc" id="L221">                challenge.setConsumed(true);</span>
+            }
+<span class="fc" id="L223">            loginOtpChallengeRepository.save(challenge);</span>
+<span class="fc" id="L224">            throw new IllegalArgumentException(&quot;Invalid OTP.&quot;);</span>
+        }
+
+<span class="fc" id="L227">        challenge.setConsumed(true);</span>
+<span class="fc" id="L228">        challenge.setVerifiedAt(now);</span>
+<span class="fc" id="L229">        loginOtpChallengeRepository.save(challenge);</span>
+
+<span class="fc" id="L231">        User user = challenge.getUser();</span>
+<span class="fc" id="L232">        user.setLastLoginAt(now);</span>
+<span class="fc" id="L233">        userRepository.save(user);</span>
+
+<span class="fc" id="L235">        String token = generateToken(user);</span>
+<span class="fc" id="L236">        log.info(&quot;User completed 2FA login successfully: {}&quot;, user.getUsername());</span>
+
+<span class="fc" id="L238">        return AuthResponse.builder()</span>
+<span class="fc" id="L239">                .accessToken(token)</span>
+<span class="fc" id="L240">                .tokenType(&quot;Bearer&quot;)</span>
+<span class="fc" id="L241">                .expiresIn(jwtTokenProvider.getExpirationTime())</span>
+<span class="fc" id="L242">                .user(mapToUserDTO(user))</span>
+<span class="fc" id="L243">                .build();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse refreshToken(String token) {
+<span class="fc bfc" id="L248" title="All 2 branches covered.">        if (!jwtTokenProvider.validateToken(token)) {</span>
+<span class="fc" id="L249">            throw new RuntimeException(&quot;Invalid token&quot;);</span>
+        }
+
+<span class="fc" id="L252">        String username = jwtTokenProvider.getUsernameFromToken(token);</span>
+<span class="fc" id="L253">        User user = userRepository.findByUsername(username)</span>
+<span class="pc" id="L254">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+
+<span class="fc" id="L256">        String newToken = generateToken(user);</span>
+<span class="fc" id="L257">        return AuthResponse.builder()</span>
+<span class="fc" id="L258">                .accessToken(newToken)</span>
+<span class="fc" id="L259">                .tokenType(&quot;Bearer&quot;)</span>
+<span class="fc" id="L260">                .expiresIn(jwtTokenProvider.getExpirationTime())</span>
+<span class="fc" id="L261">                .user(mapToUserDTO(user))</span>
+<span class="fc" id="L262">                .build();</span>
+    }
+
+    @Transactional
+    public void logout(String token) {
+<span class="fc" id="L267">        jwtTokenProvider.invalidateToken(token);</span>
+<span class="fc" id="L268">        SecurityContextHolder.clearContext();</span>
+<span class="fc" id="L269">        log.info(&quot;User logged out successfully&quot;);</span>
+<span class="fc" id="L270">    }</span>
+
+    public UserDTO getCurrentUser(Long userId) {
+<span class="fc" id="L273">        User user = userRepository.findById(userId)</span>
+<span class="fc" id="L274">                .orElseThrow(() -&gt; new RuntimeException(&quot;User not found&quot;));</span>
+<span class="fc" id="L275">        return mapToUserDTO(user);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;UserDTO&gt; getAdjusters() {
+<span class="fc" id="L280">        return userRepository.findDistinctByRoles_Name(Role.RoleName.ROLE_ADJUSTER).stream()</span>
+<span class="fc" id="L281">                .map(this::mapToUserDTO)</span>
+<span class="fc" id="L282">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;UserDTO&gt; getManagers() {
+<span class="fc" id="L287">        return userRepository.findDistinctByRoles_Name(Role.RoleName.ROLE_MANAGER).stream()</span>
+<span class="fc" id="L288">                .map(this::mapToUserDTO)</span>
+<span class="fc" id="L289">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;UserDTO&gt; getAllUsers() {
+<span class="fc" id="L294">        return userRepository.findAll().stream()</span>
+<span class="fc" id="L295">                .sorted((left, right) -&gt; {</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">                    LocalDateTime leftCreatedAt = left.getCreatedAt() == null ? LocalDateTime.MIN : left.getCreatedAt();</span>
+<span class="pc bpc" id="L297" title="1 of 2 branches missed.">                    LocalDateTime rightCreatedAt = right.getCreatedAt() == null ? LocalDateTime.MIN : right.getCreatedAt();</span>
+<span class="fc" id="L298">                    return rightCreatedAt.compareTo(leftCreatedAt);</span>
+                })
+<span class="fc" id="L300">                .map(this::mapToUserDTO)</span>
+<span class="fc" id="L301">                .toList();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public UserDTO getUserById(Long userId) {
+<span class="fc" id="L306">        User user = userRepository.findById(userId)</span>
+<span class="pc" id="L307">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found&quot;));</span>
+<span class="fc" id="L308">        return mapToUserDTO(user);</span>
+    }
+
+    private String generateToken(User user) {
+<span class="fc" id="L312">        Set&lt;String&gt; roles = user.getRoles().stream()</span>
+<span class="fc" id="L313">                .map(r -&gt; r.getName().name())</span>
+<span class="fc" id="L314">                .collect(Collectors.toSet());</span>
+<span class="fc" id="L315">        return jwtTokenProvider.generateToken(user.getId(), user.getUsername(), roles);</span>
+    }
+
+    private void invalidatePendingChallenges(Long userId, LocalDateTime now) {
+<span class="fc" id="L319">        List&lt;LoginOtpChallenge&gt; pendingChallenges = loginOtpChallengeRepository.findByUserIdAndConsumedFalse(userId);</span>
+<span class="fc bfc" id="L320" title="All 2 branches covered.">        if (pendingChallenges.isEmpty()) {</span>
+<span class="fc" id="L321">            return;</span>
+        }
+<span class="fc bfc" id="L323" title="All 2 branches covered.">        for (LoginOtpChallenge pending : pendingChallenges) {</span>
+<span class="fc" id="L324">            pending.setConsumed(true);</span>
+<span class="pc bpc" id="L325" title="2 of 4 branches missed.">            if (pending.getExpiresAt() == null || pending.getExpiresAt().isAfter(now)) {</span>
+<span class="fc" id="L326">                pending.setExpiresAt(now);</span>
+            }
+        }
+<span class="fc" id="L329">        loginOtpChallengeRepository.saveAll(pendingChallenges);</span>
+<span class="fc" id="L330">    }</span>
+
+    private String generateOtpCode() {
+<span class="fc" id="L333">        int value = secureRandom.nextInt(1_000_000);</span>
+<span class="fc" id="L334">        return String.format(Locale.ROOT, &quot;%06d&quot;, value);</span>
+    }
+
+    private void sendLoginOtpEmail(User user, String otpCode, LocalDateTime expiresAt) {
+        try {
+<span class="fc" id="L339">            SimpleMailMessage mail = new SimpleMailMessage();</span>
+<span class="fc" id="L340">            mail.setTo(user.getEmail());</span>
+<span class="pc bpc" id="L341" title="2 of 4 branches missed.">            String fromAddress = (otpMailFrom == null || otpMailFrom.isBlank()) ? null : otpMailFrom.trim();</span>
+<span class="pc bpc" id="L342" title="1 of 2 branches missed.">            if (fromAddress != null) {</span>
+<span class="fc" id="L343">                mail.setFrom(fromAddress);</span>
+            }
+<span class="fc" id="L345">            mail.setSubject(&quot;ClaimSwift Login OTP&quot;);</span>
+<span class="fc" id="L346">            mail.setText(buildOtpMailText(user, otpCode, expiresAt));</span>
+<span class="fc" id="L347">            mailSender.send(mail);</span>
+<span class="pc" id="L348">        } catch (Exception ex) {</span>
+<span class="nc" id="L349">            log.error(&quot;Failed to send login OTP email to user {}&quot;, user.getUsername(), ex);</span>
+<span class="nc" id="L350">            throw new IllegalArgumentException(&quot;Unable to send OTP email. Please try again.&quot;);</span>
+        }
+<span class="fc" id="L352">    }</span>
+
+    private String buildOtpMailText(User user, String otpCode, LocalDateTime expiresAt) {
+<span class="pc bpc" id="L355" title="2 of 4 branches missed.">        String displayName = user.getFirstName() == null || user.getFirstName().isBlank()</span>
+<span class="nc" id="L356">                ? user.getUsername()</span>
+<span class="fc" id="L357">                : user.getFirstName().trim();</span>
+<span class="fc" id="L358">        return &quot;Hello &quot; + displayName + &quot;,\n\n&quot;</span>
+<span class="fc" id="L359">                + &quot;Your ClaimSwift login OTP is: &quot; + otpCode + &quot;\n&quot;</span>
+<span class="fc" id="L360">                + &quot;This OTP expires at: &quot; + expiresAt + &quot;\n\n&quot;</span>
+                + &quot;If you did not request this login, please ignore this email.\n\n&quot;
+                + &quot;ClaimSwift Team&quot;;
+    }
+
+    private String maskEmail(String email) {
+<span class="pc bpc" id="L366" title="3 of 6 branches missed.">        if (email == null || email.isBlank() || !email.contains(&quot;@&quot;)) {</span>
+<span class="nc" id="L367">            return &quot;your registered email&quot;;</span>
+        }
+<span class="fc" id="L369">        String[] parts = email.split(&quot;@&quot;, 2);</span>
+<span class="fc" id="L370">        String local = parts[0];</span>
+<span class="fc" id="L371">        String domain = parts[1];</span>
+<span class="pc bpc" id="L372" title="1 of 2 branches missed.">        if (local.length() &lt;= 2) {</span>
+<span class="nc" id="L373">            return &quot;*@&quot; + domain;</span>
+        }
+<span class="fc" id="L375">        String maskedLocal = local.charAt(0) + &quot;***&quot; + local.charAt(local.length() - 1);</span>
+<span class="fc" id="L376">        return maskedLocal + &quot;@&quot; + domain;</span>
+    }
+
+    private UserDTO mapToUserDTO(User user) {
+<span class="fc" id="L380">        return UserDTO.builder()</span>
+<span class="fc" id="L381">                .id(user.getId())</span>
+<span class="fc" id="L382">                .username(user.getUsername())</span>
+<span class="fc" id="L383">                .email(user.getEmail())</span>
+<span class="fc" id="L384">                .firstName(user.getFirstName())</span>
+<span class="fc" id="L385">                .lastName(user.getLastName())</span>
+<span class="fc" id="L386">                .phoneNumber(user.getPhoneNumber())</span>
+<span class="fc" id="L387">                .roles(user.getRoles().stream()</span>
+<span class="fc" id="L388">                        .map(role -&gt; role.getName().name())</span>
+<span class="fc" id="L389">                        .collect(Collectors.toSet()))</span>
+<span class="fc" id="L390">                .status(user.getStatus().name())</span>
+<span class="fc" id="L391">                .lastLoginAt(user.getLastLoginAt())</span>
+<span class="fc" id="L392">                .createdAt(user.getCreatedAt())</span>
+<span class="fc" id="L393">                .build();</span>
+    }
+
+    private Set&lt;Role&gt; resolveRoles(Set&lt;String&gt; roleNames) {
+<span class="fc" id="L397">        return roleNames.stream()</span>
+<span class="fc" id="L398">                .map(this::parseRoleName)</span>
+<span class="fc" id="L399">                .map(roleName -&gt; roleRepository.findByName(roleName)</span>
+<span class="pc" id="L400">                        .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Role not found: &quot; + roleName)))</span>
+<span class="fc" id="L401">                .collect(Collectors.toSet());</span>
+    }
+
+    private Role.RoleName parseRoleName(String roleName) {
+<span class="pc bpc" id="L405" title="1 of 2 branches missed.">        String normalized = roleName == null ? &quot;&quot; : roleName.trim().toUpperCase();</span>
+<span class="pc bpc" id="L406" title="1 of 2 branches missed.">        if (!normalized.startsWith(&quot;ROLE_&quot;)) {</span>
+<span class="fc" id="L407">            normalized = &quot;ROLE_&quot; + normalized;</span>
+        }
+        try {
+<span class="fc" id="L410">            return Role.RoleName.valueOf(normalized);</span>
+<span class="nc" id="L411">        } catch (IllegalArgumentException ex) {</span>
+<span class="nc" id="L412">            throw new IllegalArgumentException(&quot;Invalid role: &quot; + roleName);</span>
+        }
+    }
+
+    private User.UserStatus resolveStatus(String status, User.UserStatus defaultStatus) {
+<span class="pc bpc" id="L417" title="2 of 4 branches missed.">        if (status == null || status.isBlank()) {</span>
+<span class="nc" id="L418">            return defaultStatus;</span>
+        }
+        try {
+<span class="fc" id="L421">            return User.UserStatus.valueOf(status.trim().toUpperCase());</span>
+<span class="nc" id="L422">        } catch (IllegalArgumentException ex) {</span>
+<span class="nc" id="L423">            throw new IllegalArgumentException(&quot;Invalid status: &quot; + status);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

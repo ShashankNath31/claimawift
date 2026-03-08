@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.claimswift.paymentservice.PaymentServiceApplicationIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 17.38 s -- in com.claimswift.paymentservice.PaymentServiceApplicationIntegrationTest

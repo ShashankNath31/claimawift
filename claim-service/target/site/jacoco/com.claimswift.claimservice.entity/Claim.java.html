@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Claim.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Claim Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.claimservice.entity</a> &gt; <span class="el_source">Claim.java</span></div><h1>Claim.java</h1><pre class="source lang-java linenums">package com.claimswift.claimservice.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+/**
+ * Claim Entity - Represents an insurance claim
+ */
+@Entity
+@Table(
+        name = &quot;claims&quot;,
+        indexes = {
+                @Index(name = &quot;idx_claim_claim_number&quot;, columnList = &quot;claim_number&quot;),
+                @Index(name = &quot;idx_claim_policy_number&quot;, columnList = &quot;policy_number&quot;),
+                @Index(name = &quot;idx_claim_status&quot;, columnList = &quot;status&quot;),
+                @Index(name = &quot;idx_claim_incident_date&quot;, columnList = &quot;incident_date&quot;),
+                @Index(name = &quot;idx_claim_claimant_name&quot;, columnList = &quot;claimant_name&quot;),
+                @Index(name = &quot;idx_claim_claimant_phone&quot;, columnList = &quot;claimant_phone&quot;),
+                @Index(name = &quot;idx_claim_claimant_status_date&quot;, columnList = &quot;claimant_id,status,incident_date&quot;)
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Claim {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = &quot;claim_number&quot;, nullable = false, unique = true, length = 50)
+    private String claimNumber;
+
+    @Column(name = &quot;policy_number&quot;, nullable = false, length = 50)
+    private String policyNumber;
+
+    @Column(name = &quot;claimant_id&quot;, nullable = false)
+    private Long claimantId;
+
+    @Column(name = &quot;claimant_name&quot;, length = 120)
+    private String claimantName;
+
+    @Column(name = &quot;claimant_phone&quot;, length = 20)
+    private String claimantPhone;
+
+    @Column(name = &quot;vehicle_registration&quot;, nullable = false, length = 20)
+    private String vehicleRegistration;
+
+    @Column(name = &quot;vehicle_make&quot;, length = 50)
+    private String vehicleMake;
+
+    @Column(name = &quot;vehicle_model&quot;, length = 50)
+    private String vehicleModel;
+
+    @Column(name = &quot;vehicle_year&quot;)
+    private Integer vehicleYear;
+
+    @Column(name = &quot;incident_date&quot;, nullable = false)
+    private LocalDate incidentDate;
+
+    @Column(name = &quot;incident_location&quot;, length = 255)
+    private String incidentLocation;
+
+    @Column(name = &quot;incident_description&quot;, columnDefinition = &quot;TEXT&quot;)
+    private String incidentDescription;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ClaimStatus status;
+
+    @Column(name = &quot;claim_amount&quot;, precision = 15, scale = 2)
+    private BigDecimal claimAmount;
+
+    @Column(name = &quot;approved_amount&quot;, precision = 15, scale = 2)
+    private BigDecimal approvedAmount;
+
+    @Column(name = &quot;beneficiary_name&quot;, length = 120)
+    private String beneficiaryName;
+
+    @Column(name = &quot;bank_account_number&quot;, length = 30)
+    private String bankAccountNumber;
+
+    @Column(name = &quot;ifsc_code&quot;, length = 20)
+    private String ifscCode;
+
+    @Column(name = &quot;bank_name&quot;, length = 120)
+    private String bankName;
+
+    @Column(name = &quot;bank_details_updated_at&quot;)
+    private LocalDateTime bankDetailsUpdatedAt;
+
+    @Column(name = &quot;assessor_id&quot;)
+    private Long assessorId;
+
+    @Column(name = &quot;adjuster_id&quot;)
+    private Long adjusterId;
+
+    // Audit Fields
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = &quot;created_by&quot;, nullable = false, updatable = false)
+    private String createdBy;
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = &quot;updated_by&quot;)
+    private String updatedBy;
+
+    @Column(name = &quot;status_changed_at&quot;)
+    private LocalDateTime statusChangedAt;
+
+<span class="fc" id="L124">    public enum ClaimStatus {</span>
+<span class="fc" id="L125">        SUBMITTED,</span>
+<span class="fc" id="L126">        UNDER_REVIEW,</span>
+<span class="fc" id="L127">        APPROVED,</span>
+<span class="fc" id="L128">        REJECTED,</span>
+<span class="fc" id="L129">        ADJUSTED,</span>
+<span class="fc" id="L130">        PAID,</span>
+<span class="fc" id="L131">        PAYMENT_FAILED,</span>
+<span class="fc" id="L132">        CANCELLED</span>
+    }
+
+    /**
+     * Update status and track when it was changed
+     */
+    public void updateStatus(ClaimStatus newStatus, String updatedBy) {
+<span class="fc" id="L139">        this.status = newStatus;</span>
+<span class="fc" id="L140">        this.statusChangedAt = LocalDateTime.now();</span>
+<span class="fc" id="L141">        this.updatedBy = updatedBy;</span>
+<span class="fc" id="L142">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

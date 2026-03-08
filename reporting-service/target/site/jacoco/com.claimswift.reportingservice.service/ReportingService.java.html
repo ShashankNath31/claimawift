@@ -1,0 +1,647 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportingService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Reporting Service</a> &gt; <a href="index.source.html" class="el_package">com.claimswift.reportingservice.service</a> &gt; <span class="el_source">ReportingService.java</span></div><h1>ReportingService.java</h1><pre class="source lang-java linenums">package com.claimswift.reportingservice.service;
+
+import com.claimswift.reportingservice.client.ClaimServiceClient;
+import com.claimswift.reportingservice.client.PaymentServiceClient;
+import com.claimswift.reportingservice.dto.AdjusterPerformanceReport;
+import com.claimswift.reportingservice.dto.ClaimSummaryReport;
+import com.claimswift.reportingservice.dto.PaymentReport;
+import com.claimswift.reportingservice.entity.ReportEvent;
+import com.claimswift.reportingservice.repository.ReportEventRepository;
+import com.claimswift.reportingservice.util.PdfGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L36">@Slf4j</span>
+@Service
+public class ReportingService {
+
+<span class="fc" id="L40">    private static final Set&lt;String&gt; PAYMENT_PENDING_STATUSES = Set.of(&quot;PENDING_VERIFICATION&quot;, &quot;INITIATED&quot;, &quot;PROCESSING&quot;);</span>
+<span class="fc" id="L41">    private static final Set&lt;String&gt; PAYMENT_REJECTED_STATUSES = Set.of(&quot;REJECTED&quot;, &quot;FAILED&quot;, &quot;CANCELLED&quot;);</span>
+<span class="fc" id="L42">    private static final Set&lt;String&gt; CLAIM_TERMINAL_STATUSES = Set.of(&quot;APPROVED&quot;, &quot;REJECTED&quot;, &quot;PAID&quot;, &quot;PAYMENT_FAILED&quot;, &quot;CANCELLED&quot;);</span>
+
+    private final ClaimServiceClient claimServiceClient;
+    private final PaymentServiceClient paymentServiceClient;
+    private final PdfGenerator pdfGenerator;
+    private final ReportEventRepository reportEventRepository;
+    private final ObjectMapper objectMapper;
+
+<span class="fc" id="L50">    public ReportingService(</span>
+            ClaimServiceClient claimServiceClient,
+            PaymentServiceClient paymentServiceClient,
+            PdfGenerator pdfGenerator,
+            ReportEventRepository reportEventRepository,
+            ObjectMapper objectMapper) {
+<span class="fc" id="L56">        this.claimServiceClient = claimServiceClient;</span>
+<span class="fc" id="L57">        this.paymentServiceClient = paymentServiceClient;</span>
+<span class="fc" id="L58">        this.pdfGenerator = pdfGenerator;</span>
+<span class="fc" id="L59">        this.reportEventRepository = reportEventRepository;</span>
+<span class="fc" id="L60">        this.objectMapper = objectMapper;</span>
+<span class="fc" id="L61">    }</span>
+
+    public ClaimSummaryReport generateClaimSummaryReport(String startDate, String endDate) {
+<span class="fc" id="L64">        LocalDate start = parseDate(startDate, &quot;startDate&quot;);</span>
+<span class="fc" id="L65">        LocalDate end = parseDate(endDate, &quot;endDate&quot;);</span>
+
+<span class="fc" id="L67">        List&lt;Map&lt;String, Object&gt;&gt; allClaims = safeList(claimServiceClient.getAllClaims());</span>
+<span class="fc" id="L68">        List&lt;Map&lt;String, Object&gt;&gt; claims = filterByDateRange(allClaims, start, end, &quot;createdAt&quot;, &quot;submittedAt&quot;, &quot;incidentDate&quot;);</span>
+
+<span class="fc" id="L70">        long total = claims.size();</span>
+<span class="fc" id="L71">        long submitted = countByStatus(claims, &quot;SUBMITTED&quot;);</span>
+<span class="fc" id="L72">        long underReview = countByStatus(claims, &quot;UNDER_REVIEW&quot;);</span>
+<span class="fc" id="L73">        long approved = countByStatus(claims, &quot;APPROVED&quot;);</span>
+<span class="fc" id="L74">        long rejected = countByStatus(claims, &quot;REJECTED&quot;);</span>
+<span class="fc" id="L75">        long paid = countByStatus(claims, &quot;PAID&quot;);</span>
+
+<span class="fc" id="L77">        BigDecimal totalAmount = sumDecimal(claims, &quot;claimAmount&quot;);</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">        BigDecimal averageAmount = total &gt; 0</span>
+<span class="fc" id="L79">                ? totalAmount.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP)</span>
+<span class="fc" id="L80">                : BigDecimal.ZERO;</span>
+
+<span class="fc" id="L82">        BigDecimal approvedAmount = claims.stream()</span>
+<span class="fc" id="L83">                .filter(c -&gt; &quot;APPROVED&quot;.equalsIgnoreCase(String.valueOf(c.get(&quot;status&quot;))))</span>
+<span class="fc" id="L84">                .map(c -&gt; resolvedApprovedAmount(c, &quot;approvedAmount&quot;, &quot;claimAmount&quot;))</span>
+<span class="fc" id="L85">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L86">        BigDecimal paidAmount = claims.stream()</span>
+<span class="fc" id="L87">                .filter(c -&gt; &quot;PAID&quot;.equalsIgnoreCase(String.valueOf(c.get(&quot;status&quot;))))</span>
+<span class="pc" id="L88">                .map(c -&gt; resolvedApprovedAmount(c, &quot;approvedAmount&quot;, &quot;claimAmount&quot;))</span>
+<span class="fc" id="L89">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+
+<span class="fc" id="L91">        Map&lt;String, Long&gt; byStatus = claims.stream()</span>
+<span class="fc" id="L92">                .collect(Collectors.groupingBy(</span>
+<span class="fc" id="L93">                        c -&gt; normalizeKey(c.get(&quot;status&quot;)),</span>
+<span class="fc" id="L94">                        Collectors.counting()</span>
+                ));
+
+<span class="fc" id="L97">        YearMonth currentMonth = YearMonth.now();</span>
+<span class="fc" id="L98">        YearMonth previousMonth = currentMonth.minusMonths(1);</span>
+
+<span class="fc" id="L100">        return ClaimSummaryReport.builder()</span>
+<span class="fc" id="L101">                .reportGeneratedAt(LocalDateTime.now())</span>
+<span class="fc" id="L102">                .reportPeriod(buildPeriod(startDate, endDate))</span>
+<span class="fc" id="L103">                .totalClaims(total)</span>
+<span class="fc" id="L104">                .submittedClaims(submitted)</span>
+<span class="fc" id="L105">                .underReviewClaims(underReview)</span>
+<span class="fc" id="L106">                .approvedClaims(approved)</span>
+<span class="fc" id="L107">                .rejectedClaims(rejected)</span>
+<span class="fc" id="L108">                .paidClaims(paid)</span>
+<span class="fc" id="L109">                .totalClaimAmount(totalAmount)</span>
+<span class="fc" id="L110">                .totalApprovedAmount(approvedAmount)</span>
+<span class="fc" id="L111">                .totalPaidAmount(paidAmount)</span>
+<span class="fc" id="L112">                .averageClaimAmount(averageAmount)</span>
+<span class="fc" id="L113">                .claimsByStatus(byStatus)</span>
+<span class="fc" id="L114">                .claimsThisMonth(countInMonth(allClaims, currentMonth, &quot;createdAt&quot;, &quot;submittedAt&quot;, &quot;incidentDate&quot;))</span>
+<span class="fc" id="L115">                .claimsLastMonth(countInMonth(allClaims, previousMonth, &quot;createdAt&quot;, &quot;submittedAt&quot;, &quot;incidentDate&quot;))</span>
+<span class="fc" id="L116">                .amountThisMonth(sumAmountInMonth(allClaims, currentMonth, &quot;claimAmount&quot;, &quot;createdAt&quot;, &quot;submittedAt&quot;, &quot;incidentDate&quot;))</span>
+<span class="fc" id="L117">                .amountLastMonth(sumAmountInMonth(allClaims, previousMonth, &quot;claimAmount&quot;, &quot;createdAt&quot;, &quot;submittedAt&quot;, &quot;incidentDate&quot;))</span>
+<span class="fc" id="L118">                .build();</span>
+    }
+
+    public PaymentReport generatePaymentReport(String startDate, String endDate) {
+<span class="fc" id="L122">        LocalDate start = parseDate(startDate, &quot;startDate&quot;);</span>
+<span class="fc" id="L123">        LocalDate end = parseDate(endDate, &quot;endDate&quot;);</span>
+
+<span class="fc" id="L125">        List&lt;Map&lt;String, Object&gt;&gt; allPayments = safeList(paymentServiceClient.getAllPayments());</span>
+<span class="fc" id="L126">        List&lt;Map&lt;String, Object&gt;&gt; payments = filterByDateRange(allPayments, start, end, &quot;createdAt&quot;, &quot;updatedAt&quot;);</span>
+
+<span class="fc" id="L128">        long total = payments.size();</span>
+<span class="fc" id="L129">        long approved = countByStatus(payments, &quot;APPROVED&quot;);</span>
+<span class="fc" id="L130">        long rejected = payments.stream().map(p -&gt; normalizeKey(p.get(&quot;status&quot;))).filter(PAYMENT_REJECTED_STATUSES::contains).count();</span>
+<span class="fc" id="L131">        long pending = payments.stream().map(p -&gt; normalizeKey(p.get(&quot;status&quot;))).filter(PAYMENT_PENDING_STATUSES::contains).count();</span>
+
+<span class="fc" id="L133">        BigDecimal totalAmount = sumDecimal(payments, &quot;amount&quot;);</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        BigDecimal average = total &gt; 0</span>
+<span class="fc" id="L135">                ? totalAmount.divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP)</span>
+<span class="fc" id="L136">                : BigDecimal.ZERO;</span>
+
+<span class="fc" id="L138">        BigDecimal approvedAmount = payments.stream()</span>
+<span class="fc" id="L139">                .filter(p -&gt; &quot;APPROVED&quot;.equalsIgnoreCase(String.valueOf(p.get(&quot;status&quot;))))</span>
+<span class="fc" id="L140">                .map(p -&gt; toBigDecimal(p.get(&quot;amount&quot;)))</span>
+<span class="fc" id="L141">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L142">        BigDecimal rejectedAmount = payments.stream()</span>
+<span class="fc" id="L143">                .filter(p -&gt; PAYMENT_REJECTED_STATUSES.contains(normalizeKey(p.get(&quot;status&quot;))))</span>
+<span class="fc" id="L144">                .map(p -&gt; toBigDecimal(p.get(&quot;amount&quot;)))</span>
+<span class="fc" id="L145">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+
+<span class="fc" id="L147">        Map&lt;String, Long&gt; byStatus = payments.stream()</span>
+<span class="fc" id="L148">                .collect(Collectors.groupingBy(</span>
+<span class="fc" id="L149">                        p -&gt; normalizeKey(p.get(&quot;status&quot;)),</span>
+<span class="fc" id="L150">                        Collectors.counting()</span>
+                ));
+
+<span class="fc" id="L153">        Map&lt;String, BigDecimal&gt; amountByStatus = payments.stream()</span>
+<span class="fc" id="L154">                .collect(Collectors.groupingBy(</span>
+<span class="fc" id="L155">                        p -&gt; normalizeKey(p.get(&quot;status&quot;)),</span>
+<span class="fc" id="L156">                        Collectors.reducing(BigDecimal.ZERO, p -&gt; toBigDecimal(p.get(&quot;amount&quot;)), BigDecimal::add)</span>
+                ));
+
+<span class="fc" id="L159">        Map&lt;String, Long&gt; paymentsByMethod = payments.stream()</span>
+<span class="fc" id="L160">                .collect(Collectors.groupingBy(</span>
+<span class="fc" id="L161">                        p -&gt; normalizeKey(p.get(&quot;paymentMethod&quot;)),</span>
+<span class="fc" id="L162">                        Collectors.counting()</span>
+                ));
+
+<span class="fc" id="L165">        YearMonth currentMonth = YearMonth.now();</span>
+<span class="fc" id="L166">        YearMonth previousMonth = currentMonth.minusMonths(1);</span>
+
+<span class="fc" id="L168">        return PaymentReport.builder()</span>
+<span class="fc" id="L169">                .reportGeneratedAt(LocalDateTime.now())</span>
+<span class="fc" id="L170">                .reportPeriod(buildPeriod(startDate, endDate))</span>
+<span class="fc" id="L171">                .totalPayments(total)</span>
+<span class="fc" id="L172">                .approvedPayments(approved)</span>
+<span class="fc" id="L173">                .rejectedPayments(rejected)</span>
+<span class="fc" id="L174">                .pendingPayments(pending)</span>
+<span class="fc" id="L175">                .totalAmount(totalAmount)</span>
+<span class="fc" id="L176">                .approvedAmount(approvedAmount)</span>
+<span class="fc" id="L177">                .rejectedAmount(rejectedAmount)</span>
+<span class="fc" id="L178">                .averagePaymentAmount(average)</span>
+<span class="fc" id="L179">                .paymentsByStatus(byStatus)</span>
+<span class="fc" id="L180">                .amountByStatus(amountByStatus)</span>
+<span class="fc" id="L181">                .paymentsByMethod(paymentsByMethod)</span>
+<span class="fc" id="L182">                .paymentsThisMonth(countInMonth(allPayments, currentMonth, &quot;createdAt&quot;, &quot;updatedAt&quot;))</span>
+<span class="fc" id="L183">                .paymentsLastMonth(countInMonth(allPayments, previousMonth, &quot;createdAt&quot;, &quot;updatedAt&quot;))</span>
+<span class="fc" id="L184">                .amountThisMonth(sumAmountInMonth(allPayments, currentMonth, &quot;amount&quot;, &quot;createdAt&quot;, &quot;updatedAt&quot;))</span>
+<span class="fc" id="L185">                .amountLastMonth(sumAmountInMonth(allPayments, previousMonth, &quot;amount&quot;, &quot;createdAt&quot;, &quot;updatedAt&quot;))</span>
+<span class="fc" id="L186">                .build();</span>
+    }
+
+    public AdjusterPerformanceReport generateAdjusterPerformanceReport(String startDate, String endDate) {
+<span class="fc" id="L190">        LocalDate start = parseDate(startDate, &quot;startDate&quot;);</span>
+<span class="fc" id="L191">        LocalDate end = parseDate(endDate, &quot;endDate&quot;);</span>
+
+<span class="fc" id="L193">        List&lt;Map&lt;String, Object&gt;&gt; allClaims = safeList(claimServiceClient.getAllClaims());</span>
+<span class="fc" id="L194">        List&lt;Map&lt;String, Object&gt;&gt; claims = filterByDateRange(allClaims, start, end, &quot;createdAt&quot;, &quot;submittedAt&quot;, &quot;incidentDate&quot;);</span>
+
+<span class="fc" id="L196">        Map&lt;Long, List&lt;Map&lt;String, Object&gt;&gt;&gt; byAdjuster = claims.stream()</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">                .filter(c -&gt; c.get(&quot;adjusterId&quot;) != null)</span>
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">                .filter(c -&gt; toLong(c.get(&quot;adjusterId&quot;)) != null)</span>
+<span class="fc" id="L199">                .collect(Collectors.groupingBy(c -&gt; Objects.requireNonNull(toLong(c.get(&quot;adjusterId&quot;)))));</span>
+
+<span class="fc" id="L201">        List&lt;AdjusterPerformanceReport.AdjusterPerformance&gt; performances = byAdjuster.entrySet().stream()</span>
+<span class="fc" id="L202">                .map(entry -&gt; {</span>
+<span class="fc" id="L203">                    Long adjusterId = entry.getKey();</span>
+<span class="fc" id="L204">                    List&lt;Map&lt;String, Object&gt;&gt; items = entry.getValue();</span>
+<span class="fc" id="L205">                    long totalAssigned = items.size();</span>
+<span class="fc" id="L206">                    long approved = items.stream()</span>
+<span class="fc" id="L207">                            .filter(c -&gt; &quot;APPROVED&quot;.equalsIgnoreCase(String.valueOf(c.get(&quot;status&quot;))))</span>
+<span class="fc" id="L208">                            .count();</span>
+<span class="fc" id="L209">                    long rejected = items.stream()</span>
+<span class="fc" id="L210">                            .filter(c -&gt; &quot;REJECTED&quot;.equalsIgnoreCase(String.valueOf(c.get(&quot;status&quot;))))</span>
+<span class="fc" id="L211">                            .count();</span>
+<span class="fc" id="L212">                    long pending = items.stream()</span>
+<span class="fc" id="L213">                            .filter(c -&gt; {</span>
+<span class="fc" id="L214">                                String status = normalizeKey(c.get(&quot;status&quot;));</span>
+<span class="pc bpc" id="L215" title="2 of 4 branches missed.">                                return &quot;UNDER_REVIEW&quot;.equals(status) || &quot;ADJUSTED&quot;.equals(status);</span>
+                            })
+<span class="fc" id="L217">                            .count();</span>
+<span class="fc" id="L218">                    BigDecimal totalClaimAmount = items.stream()</span>
+<span class="fc" id="L219">                            .map(c -&gt; toBigDecimal(c.get(&quot;claimAmount&quot;)))</span>
+<span class="fc" id="L220">                            .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L221">                    BigDecimal approvedAmount = items.stream()</span>
+<span class="fc" id="L222">                            .filter(c -&gt; &quot;APPROVED&quot;.equalsIgnoreCase(String.valueOf(c.get(&quot;status&quot;))))</span>
+<span class="fc" id="L223">                            .map(c -&gt; resolvedApprovedAmount(c, &quot;approvedAmount&quot;, &quot;claimAmount&quot;))</span>
+<span class="fc" id="L224">                            .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+<span class="fc" id="L225">                    BigDecimal rejectedAmount = items.stream()</span>
+<span class="fc" id="L226">                            .filter(c -&gt; &quot;REJECTED&quot;.equalsIgnoreCase(String.valueOf(c.get(&quot;status&quot;))))</span>
+<span class="fc" id="L227">                            .map(c -&gt; toBigDecimal(c.get(&quot;claimAmount&quot;)))</span>
+<span class="fc" id="L228">                            .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+
+<span class="pc bpc" id="L230" title="1 of 2 branches missed.">                    double approvalRate = totalAssigned &gt; 0 ? (approved * 100.0) / totalAssigned : 0.0;</span>
+<span class="fc" id="L231">                    double avgProcessingDays = calculateAverageProcessingDays(items);</span>
+
+<span class="fc" id="L233">                    String adjusterName = firstNonBlank(items, &quot;adjusterName&quot;);</span>
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">                    if (adjusterName == null) {</span>
+<span class="nc" id="L235">                        adjusterName = &quot;Adjuster-&quot; + adjusterId;</span>
+                    }
+
+<span class="fc" id="L238">                    return AdjusterPerformanceReport.AdjusterPerformance.builder()</span>
+<span class="fc" id="L239">                            .adjusterId(adjusterId)</span>
+<span class="fc" id="L240">                            .adjusterName(adjusterName)</span>
+<span class="fc" id="L241">                            .adjusterEmail(firstNonBlank(items, &quot;adjusterEmail&quot;))</span>
+<span class="fc" id="L242">                            .totalClaimsAssigned(totalAssigned)</span>
+<span class="fc" id="L243">                            .claimsApproved(approved)</span>
+<span class="fc" id="L244">                            .claimsRejected(rejected)</span>
+<span class="fc" id="L245">                            .claimsPending(pending)</span>
+<span class="fc" id="L246">                            .totalClaimAmount(totalClaimAmount)</span>
+<span class="fc" id="L247">                            .approvedAmount(approvedAmount)</span>
+<span class="fc" id="L248">                            .rejectedAmount(rejectedAmount)</span>
+<span class="fc" id="L249">                            .averageProcessingTimeDays(avgProcessingDays)</span>
+<span class="fc" id="L250">                            .approvalRate(roundDouble(approvalRate))</span>
+<span class="fc" id="L251">                            .totalDecisions(approved + rejected)</span>
+<span class="fc" id="L252">                            .build();</span>
+                })
+<span class="fc" id="L254">                .toList();</span>
+
+<span class="fc" id="L256">        BigDecimal totalAmountProcessed = performances.stream()</span>
+<span class="fc" id="L257">                .map(AdjusterPerformanceReport.AdjusterPerformance::getTotalClaimAmount)</span>
+<span class="fc" id="L258">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+
+<span class="fc" id="L260">        double overallAverage = calculateAverageProcessingDays(claims);</span>
+
+<span class="fc" id="L262">        return AdjusterPerformanceReport.builder()</span>
+<span class="fc" id="L263">                .reportGeneratedAt(LocalDateTime.now())</span>
+<span class="fc" id="L264">                .reportPeriod(buildPeriod(startDate, endDate))</span>
+<span class="fc" id="L265">                .totalAdjusters((long) performances.size())</span>
+<span class="fc" id="L266">                .totalClaimsProcessed((long) claims.size())</span>
+<span class="fc" id="L267">                .totalAmountProcessed(totalAmountProcessed)</span>
+<span class="fc" id="L268">                .averageProcessingTime(overallAverage)</span>
+<span class="fc" id="L269">                .adjusterPerformances(performances)</span>
+<span class="fc" id="L270">                .build();</span>
+    }
+
+    public byte[] exportClaimSummaryToPdf(String startDate, String endDate) {
+<span class="fc" id="L274">        return pdfGenerator.generateClaimSummaryPdf(generateClaimSummaryReport(startDate, endDate));</span>
+    }
+
+    public byte[] exportPaymentReportToPdf(String startDate, String endDate) {
+<span class="fc" id="L278">        return pdfGenerator.generatePaymentReportPdf(generatePaymentReport(startDate, endDate));</span>
+    }
+
+    public byte[] exportAdjusterPerformanceToPdf(String startDate, String endDate) {
+<span class="fc" id="L282">        return pdfGenerator.generateAdjusterPerformancePdf(generateAdjusterPerformanceReport(startDate, endDate));</span>
+    }
+
+    @Transactional
+    public void recordClaimEvent(Map&lt;String, Object&gt; eventData) {
+<span class="fc" id="L287">        persistEvent(&quot;CLAIM_EVENT&quot;, eventData);</span>
+<span class="fc" id="L288">    }</span>
+
+    @Transactional
+    public void recordStatusChange(Map&lt;String, Object&gt; statusChangeData) {
+<span class="fc" id="L292">        persistEvent(&quot;STATUS_CHANGE&quot;, statusChangeData);</span>
+<span class="fc" id="L293">    }</span>
+
+    private void persistEvent(String eventCategory, Map&lt;String, Object&gt; payload) {
+<span class="fc" id="L296">        LocalDateTime eventTimestamp = resolveDateTime(payload, &quot;timestamp&quot;, &quot;eventTimestamp&quot;, &quot;createdAt&quot;);</span>
+<span class="pc bpc" id="L297" title="1 of 2 branches missed.">        if (eventTimestamp == null) {</span>
+<span class="nc" id="L298">            eventTimestamp = LocalDateTime.now();</span>
+        }
+
+<span class="fc" id="L301">        String oldStatus = toTrimmedString(payload.get(&quot;oldStatus&quot;));</span>
+<span class="fc" id="L302">        String newStatus = toTrimmedString(payload.get(&quot;newStatus&quot;));</span>
+<span class="fc bfc" id="L303" title="All 2 branches covered.">        if (newStatus == null) {</span>
+<span class="fc" id="L304">            newStatus = toTrimmedString(payload.get(&quot;status&quot;));</span>
+        }
+
+<span class="fc" id="L307">        String eventType = toTrimmedString(payload.get(&quot;eventType&quot;));</span>
+<span class="pc bpc" id="L308" title="2 of 6 branches missed.">        if (eventType == null &amp;&amp; oldStatus != null &amp;&amp; newStatus != null) {</span>
+<span class="fc" id="L309">            eventType = oldStatus + &quot;-&gt;&quot; + newStatus;</span>
+        }
+
+<span class="fc" id="L312">        ReportEvent event = ReportEvent.builder()</span>
+<span class="fc" id="L313">                .eventCategory(eventCategory)</span>
+<span class="fc" id="L314">                .claimId(toLong(payload.get(&quot;claimId&quot;)))</span>
+<span class="fc" id="L315">                .claimNumber(toTrimmedString(payload.get(&quot;claimNumber&quot;)))</span>
+<span class="fc" id="L316">                .eventType(eventType)</span>
+<span class="fc" id="L317">                .oldStatus(oldStatus)</span>
+<span class="fc" id="L318">                .newStatus(newStatus)</span>
+<span class="fc" id="L319">                .eventTimestamp(eventTimestamp)</span>
+<span class="fc" id="L320">                .payloadJson(toJson(payload))</span>
+<span class="fc" id="L321">                .build();</span>
+
+<span class="fc" id="L323">        reportEventRepository.save(event);</span>
+<span class="fc" id="L324">    }</span>
+
+    private String toJson(Map&lt;String, Object&gt; payload) {
+        try {
+<span class="fc" id="L328">            return objectMapper.writeValueAsString(payload);</span>
+<span class="fc" id="L329">        } catch (JsonProcessingException ex) {</span>
+<span class="fc" id="L330">            log.warn(&quot;Unable to serialize event payload for reporting: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L331">            return &quot;{}&quot;;</span>
+        }
+    }
+
+    private List&lt;Map&lt;String, Object&gt;&gt; safeList(List&lt;Map&lt;String, Object&gt;&gt; input) {
+<span class="pc bpc" id="L336" title="1 of 2 branches missed.">        return input == null ? Collections.emptyList() : input;</span>
+    }
+
+    private long countByStatus(List&lt;Map&lt;String, Object&gt;&gt; items, String status) {
+<span class="fc" id="L340">        return items.stream()</span>
+<span class="fc" id="L341">                .map(i -&gt; normalizeKey(i.get(&quot;status&quot;)))</span>
+<span class="fc" id="L342">                .filter(status::equals)</span>
+<span class="fc" id="L343">                .count();</span>
+    }
+
+    private BigDecimal sumDecimal(List&lt;Map&lt;String, Object&gt;&gt; items, String key) {
+<span class="fc" id="L347">        return items.stream()</span>
+<span class="fc" id="L348">                .map(i -&gt; toBigDecimal(i.get(key)))</span>
+<span class="fc" id="L349">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+<span class="pc bpc" id="L353" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L354">            return BigDecimal.ZERO;</span>
+        }
+<span class="fc bfc" id="L356" title="All 2 branches covered.">        if (value instanceof BigDecimal bd) {</span>
+<span class="fc" id="L357">            return bd;</span>
+        }
+        try {
+<span class="nc" id="L360">            return new BigDecimal(String.valueOf(value));</span>
+<span class="fc" id="L361">        } catch (NumberFormatException ex) {</span>
+<span class="fc" id="L362">            return BigDecimal.ZERO;</span>
+        }
+    }
+
+    private BigDecimal resolvedApprovedAmount(Map&lt;String, Object&gt; item, String approvedKey, String fallbackKey) {
+<span class="fc" id="L367">        BigDecimal approvedAmount = toBigDecimal(item.get(approvedKey));</span>
+<span class="pc bpc" id="L368" title="1 of 2 branches missed.">        if (approvedAmount.compareTo(BigDecimal.ZERO) &gt; 0) {</span>
+<span class="fc" id="L369">            return approvedAmount;</span>
+        }
+<span class="nc" id="L371">        return toBigDecimal(item.get(fallbackKey));</span>
+    }
+
+    private String normalizeKey(Object value) {
+<span class="fc" id="L375">        String raw = toTrimmedString(value);</span>
+<span class="pc bpc" id="L376" title="1 of 2 branches missed.">        if (raw == null) {</span>
+<span class="nc" id="L377">            return &quot;UNKNOWN&quot;;</span>
+        }
+<span class="fc" id="L379">        return raw.toUpperCase(Locale.ROOT);</span>
+    }
+
+    private String buildPeriod(String startDate, String endDate) {
+<span class="fc bfc" id="L383" title="All 4 branches covered.">        if (startDate == null &amp;&amp; endDate == null) {</span>
+<span class="fc" id="L384">            return &quot;All Time&quot;;</span>
+        }
+<span class="pc bpc" id="L386" title="1 of 4 branches missed.">        if (startDate != null &amp;&amp; endDate != null) {</span>
+<span class="nc" id="L387">            return startDate + &quot; to &quot; + endDate;</span>
+        }
+<span class="fc bfc" id="L389" title="All 2 branches covered.">        if (startDate != null) {</span>
+<span class="fc" id="L390">            return &quot;From &quot; + startDate;</span>
+        }
+<span class="fc" id="L392">        return &quot;Up to &quot; + endDate;</span>
+    }
+
+    private List&lt;Map&lt;String, Object&gt;&gt; filterByDateRange(
+            List&lt;Map&lt;String, Object&gt;&gt; items,
+            LocalDate startDate,
+            LocalDate endDate,
+            String... dateKeys) {
+<span class="pc bpc" id="L400" title="2 of 4 branches missed.">        if (startDate == null &amp;&amp; endDate == null) {</span>
+<span class="fc" id="L401">            return items;</span>
+        }
+
+<span class="nc" id="L404">        List&lt;Map&lt;String, Object&gt;&gt; filtered = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">        for (Map&lt;String, Object&gt; item : items) {</span>
+<span class="nc" id="L406">            LocalDate itemDate = resolveDate(item, dateKeys);</span>
+<span class="nc bnc" id="L407" title="All 2 branches missed.">            if (itemDate == null) {</span>
+<span class="nc" id="L408">                continue;</span>
+            }
+<span class="nc bnc" id="L410" title="All 4 branches missed.">            if (startDate != null &amp;&amp; itemDate.isBefore(startDate)) {</span>
+<span class="nc" id="L411">                continue;</span>
+            }
+<span class="nc bnc" id="L413" title="All 4 branches missed.">            if (endDate != null &amp;&amp; itemDate.isAfter(endDate)) {</span>
+<span class="nc" id="L414">                continue;</span>
+            }
+<span class="nc" id="L416">            filtered.add(item);</span>
+        }
+<span class="nc" id="L418">        return filtered;</span>
+    }
+
+    private long countInMonth(List&lt;Map&lt;String, Object&gt;&gt; items, YearMonth month, String... dateKeys) {
+<span class="fc" id="L422">        return items.stream()</span>
+<span class="fc" id="L423">                .map(item -&gt; resolveDate(item, dateKeys))</span>
+<span class="fc" id="L424">                .filter(Objects::nonNull)</span>
+<span class="fc" id="L425">                .filter(date -&gt; YearMonth.from(date).equals(month))</span>
+<span class="fc" id="L426">                .count();</span>
+    }
+
+    private BigDecimal sumAmountInMonth(List&lt;Map&lt;String, Object&gt;&gt; items, YearMonth month, String amountKey, String... dateKeys) {
+<span class="fc" id="L430">        return items.stream()</span>
+<span class="fc" id="L431">                .filter(item -&gt; {</span>
+<span class="fc" id="L432">                    LocalDate date = resolveDate(item, dateKeys);</span>
+<span class="pc bpc" id="L433" title="1 of 4 branches missed.">                    return date != null &amp;&amp; YearMonth.from(date).equals(month);</span>
+                })
+<span class="fc" id="L435">                .map(item -&gt; toBigDecimal(item.get(amountKey)))</span>
+<span class="fc" id="L436">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+    }
+
+    private LocalDate resolveDate(Map&lt;String, Object&gt; item, String... dateKeys) {
+<span class="fc" id="L440">        LocalDateTime dateTime = resolveDateTime(item, dateKeys);</span>
+<span class="pc bpc" id="L441" title="1 of 2 branches missed.">        if (dateTime != null) {</span>
+<span class="fc" id="L442">            return dateTime.toLocalDate();</span>
+        }
+
+<span class="nc bnc" id="L445" title="All 2 branches missed.">        for (String key : dateKeys) {</span>
+<span class="nc" id="L446">            LocalDate parsed = parseFlexibleDate(item.get(key));</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">            if (parsed != null) {</span>
+<span class="nc" id="L448">                return parsed;</span>
+            }
+        }
+<span class="nc" id="L451">        return null;</span>
+    }
+
+    private LocalDateTime resolveDateTime(Map&lt;String, Object&gt; item, String... dateKeys) {
+<span class="pc bpc" id="L455" title="1 of 2 branches missed.">        for (String key : dateKeys) {</span>
+<span class="fc" id="L456">            LocalDateTime parsed = parseFlexibleDateTime(item.get(key));</span>
+<span class="fc bfc" id="L457" title="All 2 branches covered.">            if (parsed != null) {</span>
+<span class="fc" id="L458">                return parsed;</span>
+            }
+        }
+<span class="nc" id="L461">        return null;</span>
+    }
+
+    private LocalDate parseFlexibleDate(Object value) {
+<span class="pc bpc" id="L465" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L466">            return null;</span>
+        }
+<span class="pc bpc" id="L468" title="1 of 2 branches missed.">        if (value instanceof LocalDate localDate) {</span>
+<span class="nc" id="L469">            return localDate;</span>
+        }
+<span class="fc bfc" id="L471" title="All 2 branches covered.">        if (value instanceof LocalDateTime localDateTime) {</span>
+<span class="fc" id="L472">            return localDateTime.toLocalDate();</span>
+        }
+<span class="fc bfc" id="L474" title="All 2 branches covered.">        if (value instanceof String raw) {</span>
+<span class="pc bpc" id="L475" title="1 of 2 branches missed.">            if (raw.isBlank()) {</span>
+<span class="nc" id="L476">                return null;</span>
+            }
+            try {
+<span class="fc" id="L479">                return LocalDate.parse(raw);</span>
+<span class="nc" id="L480">            } catch (DateTimeParseException ignored) {</span>
+<span class="nc" id="L481">                LocalDateTime dateTime = parseFlexibleDateTime(raw);</span>
+<span class="nc bnc" id="L482" title="All 2 branches missed.">                return dateTime == null ? null : dateTime.toLocalDate();</span>
+            }
+        }
+<span class="pc bpc" id="L485" title="2 of 4 branches missed.">        if (value instanceof List&lt;?&gt; list &amp;&amp; list.size() &gt;= 3) {</span>
+            try {
+<span class="fc" id="L487">                int year = Integer.parseInt(String.valueOf(list.get(0)));</span>
+<span class="fc" id="L488">                int month = Integer.parseInt(String.valueOf(list.get(1)));</span>
+<span class="fc" id="L489">                int day = Integer.parseInt(String.valueOf(list.get(2)));</span>
+<span class="fc" id="L490">                return LocalDate.of(year, month, day);</span>
+<span class="nc" id="L491">            } catch (Exception ignored) {</span>
+<span class="nc" id="L492">                return null;</span>
+            }
+        }
+<span class="nc" id="L495">        return null;</span>
+    }
+
+    private LocalDateTime parseFlexibleDateTime(Object value) {
+<span class="fc bfc" id="L499" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L500">            return null;</span>
+        }
+<span class="pc bpc" id="L502" title="1 of 2 branches missed.">        if (value instanceof LocalDateTime localDateTime) {</span>
+<span class="nc" id="L503">            return localDateTime;</span>
+        }
+<span class="pc bpc" id="L505" title="1 of 2 branches missed.">        if (value instanceof LocalDate localDate) {</span>
+<span class="nc" id="L506">            return localDate.atStartOfDay();</span>
+        }
+<span class="fc bfc" id="L508" title="All 2 branches covered.">        if (value instanceof Instant instant) {</span>
+<span class="fc" id="L509">            return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());</span>
+        }
+<span class="fc bfc" id="L511" title="All 2 branches covered.">        if (value instanceof Number number) {</span>
+<span class="fc" id="L512">            return LocalDateTime.ofInstant(Instant.ofEpochMilli(number.longValue()), ZoneId.systemDefault());</span>
+        }
+<span class="fc bfc" id="L514" title="All 2 branches covered.">        if (value instanceof String raw) {</span>
+<span class="fc" id="L515">            String trimmed = raw.trim();</span>
+<span class="pc bpc" id="L516" title="1 of 2 branches missed.">            if (trimmed.isBlank()) {</span>
+<span class="nc" id="L517">                return null;</span>
+            }
+            try {
+<span class="fc" id="L520">                return LocalDateTime.parse(trimmed);</span>
+<span class="fc" id="L521">            } catch (DateTimeParseException ignored) {</span>
+            }
+            try {
+<span class="fc" id="L524">                return OffsetDateTime.parse(trimmed).toLocalDateTime();</span>
+<span class="nc" id="L525">            } catch (DateTimeParseException ignored) {</span>
+            }
+            try {
+<span class="nc" id="L528">                return Instant.parse(trimmed).atZone(ZoneId.systemDefault()).toLocalDateTime();</span>
+<span class="nc" id="L529">            } catch (DateTimeParseException ignored) {</span>
+            }
+<span class="nc" id="L531">            return null;</span>
+        }
+<span class="pc bpc" id="L533" title="1 of 4 branches missed.">        if (value instanceof List&lt;?&gt; list &amp;&amp; list.size() &gt;= 3) {</span>
+            try {
+<span class="fc" id="L535">                int year = Integer.parseInt(String.valueOf(list.get(0)));</span>
+<span class="fc" id="L536">                int month = Integer.parseInt(String.valueOf(list.get(1)));</span>
+<span class="fc" id="L537">                int day = Integer.parseInt(String.valueOf(list.get(2)));</span>
+<span class="pc bpc" id="L538" title="1 of 2 branches missed.">                int hour = list.size() &gt; 3 ? Integer.parseInt(String.valueOf(list.get(3))) : 0;</span>
+<span class="pc bpc" id="L539" title="1 of 2 branches missed.">                int minute = list.size() &gt; 4 ? Integer.parseInt(String.valueOf(list.get(4))) : 0;</span>
+<span class="pc bpc" id="L540" title="1 of 2 branches missed.">                int second = list.size() &gt; 5 ? Integer.parseInt(String.valueOf(list.get(5))) : 0;</span>
+<span class="pc bpc" id="L541" title="1 of 2 branches missed.">                int nano = list.size() &gt; 6 ? Integer.parseInt(String.valueOf(list.get(6))) : 0;</span>
+<span class="fc" id="L542">                return LocalDateTime.of(year, month, day, hour, minute, second, nano);</span>
+<span class="nc" id="L543">            } catch (Exception ignored) {</span>
+<span class="nc" id="L544">                return null;</span>
+            }
+        }
+<span class="pc bpc" id="L547" title="1 of 2 branches missed.">        if (value instanceof Map&lt;?, ?&gt; map) {</span>
+            try {
+<span class="fc" id="L549">                Object yearObj = map.get(&quot;year&quot;);</span>
+<span class="pc bpc" id="L550" title="1 of 2 branches missed.">                Object monthObj = map.get(&quot;monthValue&quot;) != null ? map.get(&quot;monthValue&quot;) : map.get(&quot;month&quot;);</span>
+<span class="pc bpc" id="L551" title="1 of 2 branches missed.">                Object dayObj = map.get(&quot;dayOfMonth&quot;) != null ? map.get(&quot;dayOfMonth&quot;) : map.get(&quot;day&quot;);</span>
+<span class="pc bpc" id="L552" title="3 of 6 branches missed.">                if (yearObj == null || monthObj == null || dayObj == null) {</span>
+<span class="nc" id="L553">                    return null;</span>
+                }
+<span class="fc" id="L555">                int year = Integer.parseInt(String.valueOf(yearObj));</span>
+<span class="fc" id="L556">                int month = Integer.parseInt(String.valueOf(monthObj));</span>
+<span class="fc" id="L557">                int day = Integer.parseInt(String.valueOf(dayObj));</span>
+<span class="pc bpc" id="L558" title="1 of 2 branches missed.">                int hour = map.get(&quot;hour&quot;) != null ? Integer.parseInt(String.valueOf(map.get(&quot;hour&quot;))) : 0;</span>
+<span class="pc bpc" id="L559" title="1 of 2 branches missed.">                int minute = map.get(&quot;minute&quot;) != null ? Integer.parseInt(String.valueOf(map.get(&quot;minute&quot;))) : 0;</span>
+<span class="pc bpc" id="L560" title="1 of 2 branches missed.">                int second = map.get(&quot;second&quot;) != null ? Integer.parseInt(String.valueOf(map.get(&quot;second&quot;))) : 0;</span>
+<span class="pc bpc" id="L561" title="1 of 2 branches missed.">                int nano = map.get(&quot;nano&quot;) != null ? Integer.parseInt(String.valueOf(map.get(&quot;nano&quot;))) : 0;</span>
+<span class="fc" id="L562">                return LocalDateTime.of(year, month, day, hour, minute, second, nano);</span>
+<span class="nc" id="L563">            } catch (Exception ignored) {</span>
+<span class="nc" id="L564">                return null;</span>
+            }
+        }
+<span class="nc" id="L567">        return null;</span>
+    }
+
+    private LocalDate parseDate(String rawDate, String fieldName) {
+<span class="pc bpc" id="L571" title="1 of 4 branches missed.">        if (rawDate == null || rawDate.isBlank()) {</span>
+<span class="fc" id="L572">            return null;</span>
+        }
+        try {
+<span class="nc" id="L575">            return LocalDate.parse(rawDate.trim());</span>
+<span class="fc" id="L576">        } catch (DateTimeParseException ex) {</span>
+<span class="fc" id="L577">            throw new IllegalArgumentException(&quot;Invalid &quot; + fieldName + &quot; format. Use YYYY-MM-DD.&quot;);</span>
+        }
+    }
+
+    private String firstNonBlank(List&lt;Map&lt;String, Object&gt;&gt; items, String key) {
+<span class="fc" id="L582">        return items.stream()</span>
+<span class="fc" id="L583">                .map(item -&gt; toTrimmedString(item.get(key)))</span>
+<span class="fc" id="L584">                .filter(Objects::nonNull)</span>
+<span class="fc" id="L585">                .findFirst()</span>
+<span class="fc" id="L586">                .orElse(null);</span>
+    }
+
+    private double calculateAverageProcessingDays(List&lt;Map&lt;String, Object&gt;&gt; items) {
+<span class="fc" id="L590">        List&lt;Double&gt; processingDays = items.stream()</span>
+<span class="fc" id="L591">                .map(this::resolveProcessingDays)</span>
+<span class="fc" id="L592">                .filter(Objects::nonNull)</span>
+<span class="fc" id="L593">                .toList();</span>
+
+<span class="fc bfc" id="L595" title="All 2 branches covered.">        if (processingDays.isEmpty()) {</span>
+<span class="fc" id="L596">            return 0.0;</span>
+        }
+
+<span class="fc" id="L599">        double average = processingDays.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);</span>
+<span class="fc" id="L600">        return roundDouble(average);</span>
+    }
+
+    private Double resolveProcessingDays(Map&lt;String, Object&gt; claim) {
+<span class="fc" id="L604">        String status = normalizeKey(claim.get(&quot;status&quot;));</span>
+<span class="pc bpc" id="L605" title="1 of 2 branches missed.">        if (!CLAIM_TERMINAL_STATUSES.contains(status)) {</span>
+<span class="nc" id="L606">            return null;</span>
+        }
+
+<span class="fc" id="L609">        LocalDateTime start = resolveDateTime(claim, &quot;submittedAt&quot;, &quot;createdAt&quot;);</span>
+<span class="fc" id="L610">        LocalDateTime end = resolveDateTime(claim, &quot;paidAt&quot;, &quot;approvedAt&quot;, &quot;updatedAt&quot;);</span>
+<span class="pc bpc" id="L611" title="3 of 6 branches missed.">        if (start == null || end == null || end.isBefore(start)) {</span>
+<span class="nc" id="L612">            return null;</span>
+        }
+
+<span class="fc" id="L615">        long hours = Duration.between(start, end).toHours();</span>
+<span class="fc" id="L616">        return BigDecimal.valueOf(hours)</span>
+<span class="fc" id="L617">                .divide(BigDecimal.valueOf(24), 2, RoundingMode.HALF_UP)</span>
+<span class="fc" id="L618">                .doubleValue();</span>
+    }
+
+    private double roundDouble(double value) {
+<span class="fc" id="L622">        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();</span>
+    }
+
+    private Long toLong(Object value) {
+<span class="pc bpc" id="L626" title="1 of 2 branches missed.">        if (value == null) {</span>
+<span class="nc" id="L627">            return null;</span>
+        }
+<span class="fc bfc" id="L629" title="All 2 branches covered.">        if (value instanceof Number number) {</span>
+<span class="fc" id="L630">            return number.longValue();</span>
+        }
+        try {
+<span class="nc" id="L633">            return Long.parseLong(String.valueOf(value));</span>
+<span class="fc" id="L634">        } catch (NumberFormatException ex) {</span>
+<span class="fc" id="L635">            return null;</span>
+        }
+    }
+
+    private String toTrimmedString(Object value) {
+<span class="fc bfc" id="L640" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L641">            return null;</span>
+        }
+<span class="fc" id="L643">        String resolved = String.valueOf(value).trim();</span>
+<span class="pc bpc" id="L644" title="1 of 2 branches missed.">        return resolved.isBlank() ? null : resolved;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
